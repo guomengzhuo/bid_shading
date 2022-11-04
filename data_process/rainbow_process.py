@@ -19,7 +19,6 @@ class RainbowProcess(object):
         self.rainbow_conf = rainbow_conf
         self.conf_name = conf_name
         self.env = env
-        pass
 
     def read_conf(self):
         rainbow_client = RainbowClient(self.rainbow_conf)

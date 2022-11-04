@@ -53,9 +53,10 @@ class ReadMarketPriceData(object):
         read from redis, first priority
         """
         output_dict = {}
-
+        self.logging.info("start get data!")
         if self.env == "offline":
-            output_dict = self.get_local_data(redis_key)
+            is_ok, output_dict = self.get_local_data(redis_key)
+            self.logging.info(f"len(output_dict):{len(output_dict)}, output_dict:{output_dict}")
             return output_dict
 
         redis_client = redis.Redis(host=self.redis_conf["host"],

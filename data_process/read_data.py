@@ -62,7 +62,7 @@ class ReadData(object):
         3、market_price_dict = market_price_hour_dict + （market_price_day_dict - market_price_hour_dict）
 
         """
-        read_market_price_data = ReadMarketPriceData(self.logging, yky_dsp_redis_sample_conf)
+        read_market_price_data = ReadMarketPriceData(self.logging, yky_dsp_redis_sample_conf, self.env)
 
         # 获取天级别的数据
         market_price_day_dict = read_market_price_data.get_data(position_median_price_day_key)

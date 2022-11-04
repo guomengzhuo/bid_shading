@@ -23,14 +23,20 @@ import numpy as np
 
 import logging
 
-logging.basicConfig(
-    filename=os.path.join(os.getcwd(),
-                          "./log/" + __file__.split(".")[0] + datetime.datetime.strftime(datetime.datetime.today(),
-                                                                                         "_%Y%m%d") + ".log"),
-    level=logging.INFO,
-    filemode="a+",
-    format="%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d ]in %(funcName)-8s  %(message)s"
-)
+if Environment == "offline":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d ]in %(funcName)-8s  %(message)s"
+    )
+else:
+    logging.basicConfig(
+        filename=os.path.join(os.getcwd(),
+                              "./log/" + __file__.split(".")[0] + datetime.datetime.strftime(datetime.datetime.today(),
+                                                                                             "_%Y%m%d") + ".log"),
+        level=logging.INFO,
+        filemode="a+",
+        format="%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d ]in %(funcName)-8s  %(message)s"
+    )
 
 # yky tof alarm configs
 yky_tof_conf = {
@@ -518,29 +524,35 @@ class BidShading(object):
 
         self.logging.info(f"run -> end len(optimal_ratio_dict):{len(self.optimal_ratio_dict)}")
 
-        # 写入
         is_ok = False
-        if len(self.optimal_ratio_dict) > 0:
-            is_ok, msg = self.write_data()
-            return is_ok, msg
+        if Environment != "offline":
+            # 写入
+            if len(self.optimal_ratio_dict) > 0:
+                is_ok, msg = self.write_data()
+                return is_ok, msg
+            else:
+                self.logging.info(f"[main] optimal_ratio_dict adjust empty")
         else:
-            self.logging.info(f"[main] optimal_ratio_dict adjust empty")
-
+            self.logging.info(f"self.optimal_ratio_dict:{self.optimal_ratio_dict}")
         # 3、计算完 删除临时文件
         self.remove_local_backend()
         return is_ok, "empty adjust list "
 
 
 def main():
-    yky_dsp_db_env = sys.argv[1]
+    yky_dsp_db_env = "test"
+    if Environment != "offline":
+        yky_dsp_db_env = sys.argv[1]
+
     bs = BidShading(logging, yky_dsp_db_env)
     is_ok, msg = bs.run()
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2 and (sys.argv[1] not in ('test', 'production')):
-        sys.stderr.write("Usage:python3 bid_shading_e_e.py test|production\n")
-        sys.exit(-1)
+    if Environment != "offline":
+        if len(sys.argv) != 2 and (sys.argv[1] not in ('test', 'production')):
+            sys.stderr.write("Usage:python3 bid_shading_e_e.py test|production\n")
+            sys.exit(-1)
 
     # python3 bid_shading_e_e.py production > train.log 2>&1 &
     main()
