@@ -16,9 +16,10 @@ class ReadImpressionPriceData(object):
     # 获取实时曝光价格
     """
 
-    def __init__(self, logging, redis_conf):
+    def __init__(self, logging, redis_conf, env="prob"):
         self.logging = logging
         self.redis_conf = redis_conf
+        self.env = env
 
     def get_local_data(self, begin, redis_prefix_key):
         data_res = []
@@ -53,7 +54,6 @@ class ReadImpressionPriceData(object):
                         os.remove(del_file_name)  # 删除过期文件
 
                     file_name_end = file_name
-
                 else:
                     del_file_name = f"{file_path}/{file_name}"
                     self.logging.info(f"del_file_name:{del_file_name}")
@@ -168,11 +168,9 @@ class ReadImpressionPriceData(object):
             else:
                 self.logging.info(f"len(time_part_list) = 0")
 
-
-
         return request_part == read_part, read_part, data_res
 
-    def read_from_redis(self, is_impression=True, last_hour=4):
+    def get_data(self, is_impression=True, last_hour=4):
         """
         read from redis, first priority
         """
@@ -191,7 +189,12 @@ class ReadImpressionPriceData(object):
         self.logging.info(f"redis_prefix_key:{redis_prefix_key}, "
                           f"statis_minus_begin:{statis_minus_begin}, statis_minus_end:{statis_minus_end}")
 
-        is_succ, data_num, data_res = self.get_data_from_redis(redis_prefix_key, statis_minus_begin, statis_minus_end)
+        if self.env == "offline":
+            is_succ, data_res, data_num, _, _ = self.get_local_data("202211010000", redis_prefix_key)
+        else:
+            is_succ, data_num, data_res = self.get_data_from_redis(redis_prefix_key, statis_minus_begin,
+                                                                   statis_minus_end)
+
         self.logging.info(f"redis_prefix_key:{redis_prefix_key}, is_succ:{is_succ}, data_num:{data_num}")
 
         if len(data_res) < 1:
@@ -250,4 +253,4 @@ if __name__ == '__main__':
     from configs.config import yky_dsp_redis_sample_conf
 
     rd = ReadImpressionPriceData(logging, yky_dsp_redis_sample_conf)
-    rd.read_from_redis(is_impression=True, last_hour=1)
+    rd.get_data(is_impression=True, last_hour=1)

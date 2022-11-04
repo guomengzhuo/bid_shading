@@ -19,18 +19,24 @@ class ReadData(object):
     # 数据读取主类
     """
 
-    def __init__(self, logging):
+    def __init__(self, logging, env="prob"):
         """
         # 初始化
         """
         self.logging = logging
+        self.env = env
 
     def read_bid_shading_media_white_list(self):
+        media_white_list = []
+        if self.env == "offline":
+            media_white_list = [30391, 30390, 30718, 30658, 30659, 30725, 30726, 30827, 30832, 30428,
+                                30429, 30731, 30730]
+            return True, set(media_white_list)
+
         rainbow_env = "prod"
         ad_type_pro = RainbowProcess(rainbow_conf, rainbow_bid_shading_white_list_name, env=rainbow_env)
         is_ok, result = ad_type_pro.read_conf()
 
-        media_white_list = []
         if not is_ok:
             self.logging.error(f"read RainbowProcess failed name:{rainbow_bid_shading_white_list_name}")
             return False, media_white_list
@@ -59,10 +65,10 @@ class ReadData(object):
         read_market_price_data = ReadMarketPriceData(self.logging, yky_dsp_redis_sample_conf)
 
         # 获取天级别的数据
-        market_price_day_dict = read_market_price_data.read_from_redis(position_median_price_day_key)
+        market_price_day_dict = read_market_price_data.get_data(position_median_price_day_key)
 
         # 获取小时级别的数据
-        market_price_hour_dict = read_market_price_data.read_from_redis(position_median_price_hour_key)
+        market_price_hour_dict = read_market_price_data.get_data(position_median_price_hour_key)
 
         # market_price_dict = market_price_hour_dict + （market_price_day_dict - market_price_hour_dict）
         market_price_dict = market_price_hour_dict
@@ -95,16 +101,16 @@ class ReadData(object):
         """
         read real time impression pirce, last 1 hour
         """
-        read_impression_price = ReadImpressionPriceData(self.logging, yky_dsp_redis_sample_conf)
+        read_impression_price = ReadImpressionPriceData(self.logging, yky_dsp_redis_sample_conf, self.env)
 
         # 获取曝光数据
-        impression_price_dict = read_impression_price.read_from_redis(is_impression=True,
-                                                                      last_hour=read_impression_last_hour)
+        impression_price_dict = read_impression_price.get_data(is_impression=True,
+                                                               last_hour=read_impression_last_hour)
         self.logging.info(f"len(impression_price_dict):{len(impression_price_dict)}")
 
         # 获取响应未曝光数据
-        no_impression_price_dict = read_impression_price.read_from_redis(is_impression=False,
-                                                                         last_hour=read_impression_last_hour)
+        no_impression_price_dict = read_impression_price.get_data(is_impression=False,
+                                                                  last_hour=read_impression_last_hour)
         self.logging.info(f"len(no_impression_price_dict):{len(no_impression_price_dict)}")
 
         return impression_price_dict, no_impression_price_dict

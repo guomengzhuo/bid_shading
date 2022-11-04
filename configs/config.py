@@ -16,7 +16,10 @@ yky_dsp_redis_sample_conf = {
 }
 
 # 限制读最近曝光的时间
-read_impression_last_hour = 2
+read_impression_last_hour = 72
+
+# env
+Environment = "prob"
 
 # 获取position ID 曝光 win_price中位数
 position_median_price_day_key = "strategy-media-pos-pltv-median"  # 天更新

@@ -6,6 +6,8 @@
 # @Software: PyCharm
 
 import redis
+import os
+import json
 
 
 class ReadMarketPriceData(object):
@@ -13,15 +15,49 @@ class ReadMarketPriceData(object):
     # 获取媒体市场价格
     """
 
-    def __init__(self, logging, redis_conf):
+    def __init__(self, logging, redis_conf, env="prob"):
         self.logging = logging
         self.redis_conf = redis_conf
+        self.env = env
 
-    def read_from_redis(self, redis_key):
+    def write_data_to_local(self, data_dict, redis_prefix_key):
+        if not os.path.exists(f"{os.getcwd()}/data"):
+            os.makedirs(f"{os.getcwd()}/data")
+            self.logging.info(f"makedirs {os.getcwd()}/data")
+
+        file_name = f"{os.getcwd()}/data/{redis_prefix_key}.json"
+        if not os.path.exists(file_name):
+            with open(file_name, "w") as f:
+                json.dump(data_dict, f)
+                self.logging.info(f"write json data complete ./data/{redis_prefix_key}.json")
+        else:
+            self.logging.info(f"{file_name} is exist")
+
+    def get_local_data(self, redis_key):
+
+        data_dict = {}
+        file_path = f"{os.getcwd()}/data/{redis_key}.json"
+
+        if not os.path.exists(file_path):
+            return False, data_dict
+
+        with open(file_path, 'r') as fr:
+            self.logging.info(f"open {file_path}")
+            data_dict = json.loads(fr.read())
+            self.logging.info(f"len data_dict:{len(data_dict)}")
+
+        return True, data_dict
+
+    def get_data(self, redis_key):
         """
         read from redis, first priority
         """
         output_dict = {}
+
+        if self.env == "offline":
+            output_dict = self.get_local_data(redis_key)
+            return output_dict
+
         redis_client = redis.Redis(host=self.redis_conf["host"],
                                    port=self.redis_conf["port"],
                                    password=self.redis_conf["auth"])
@@ -60,6 +96,9 @@ class ReadMarketPriceData(object):
             position_dict[position_id] = pltv_dict
             output_dict[media_app_id] = position_dict
 
+        # 将数据本地化存储
+        self.write_data_to_local(output_dict, redis_key)
+
         # self.logging.info(f"---output_dict:{output_dict}")
         return output_dict
 
@@ -74,4 +113,4 @@ if __name__ == '__main__':
     )
 
     rd = ReadMarketPriceData(logging, yky_dsp_redis_sample_conf)
-    rd.read_from_redis(position_median_price_hour_key)
+    rd.get_data(position_median_price_hour_key)

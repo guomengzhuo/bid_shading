@@ -14,7 +14,7 @@ import multiprocessing
 
 import datetime
 from data_process.read_data import ReadData
-from configs.config import redis_key, PLTV_LEVEL, parallel_num, max_search_num, ratio_step
+from configs.config import redis_key, PLTV_LEVEL, parallel_num, max_search_num, ratio_step, Environment
 from configs.redis_conf import yky_conf_redis_conf_gz as yky_dsp_redis_conf
 from data_process.redis_process import RedisProcess
 import math
@@ -399,7 +399,7 @@ class BidShading(object):
 
     def read_data(self):
         # 1、读取 bid shading输入数据
-        rd = ReadData(logging=self.logging)
+        rd = ReadData(logging=self.logging, env=Environment)
 
         # self.media_white_list = [int(media_app_id),...]
         # market_price_dict = media_app_id:position_id:pltv - value
