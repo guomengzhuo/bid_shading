@@ -15,7 +15,7 @@ import multiprocessing
 import datetime
 from data_process.read_data import ReadData
 from configs.config import redis_key, PLTV_LEVEL, parallel_num, max_search_num, ratio_step
-from conf.redis_conf import yky_conf_redis_conf_gz as yky_dsp_redis_conf
+from configs.redis_conf import yky_conf_redis_conf_gz as yky_dsp_redis_conf
 from data_process.redis_process import RedisProcess
 import math
 import numpy as np

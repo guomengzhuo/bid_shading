@@ -6,8 +6,8 @@
 import sys
 sys.path.append('../')
 
-
 from rainbow_sdk.rainbow_client import RainbowClient
+
 
 class RainbowProcess(object):
     def __init__(self, rainbow_conf, conf_name, env):
