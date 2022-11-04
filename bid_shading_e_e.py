@@ -317,7 +317,7 @@ class Bandit(object):
                 if rate < 0.01:
                     rate = 0.01
 
-            reward_weight = self.calculate_reward_weigth(price, market_price_value, right_range, left_range)
+            reward_weight = self.calculate_reward_weigth(max_probs_key, market_price_value, right_range, left_range)
 
             key_sample_freq = chosen_count_map[max_probs_key]
             estimared_rewards_map[max_probs_key] = (key_sample_freq * estimared_rewards_map[max_probs_key] +
@@ -523,7 +523,7 @@ class BidShading(object):
             self.optimal_ratio_dict.update(res.get())
 
         self.logging.info(f"run -> end len(optimal_ratio_dict):{len(self.optimal_ratio_dict)}")
-
+ 
         is_ok = False
         if Environment != "offline":
             # 写入
