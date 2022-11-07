@@ -6,10 +6,9 @@
 # @Software: PyCharm
 
 
-from data_process.read_impression_data import ReadImpressionPriceData
 from configs.config import DATA_PATH
-from pandas.core.frame import DataFrame
 import pandas as pd
+import numpy as np
 
 
 class ReadData(object):
@@ -28,8 +27,22 @@ class ReadData(object):
     def test_read(self):
 
         df = pd.read_csv(self.data_path, sep="\t")
+        # df['pltv'] = df['pltv'].apply(pd.to_numeric, errors='coerce').fillna(0)
+        # df['pctcvr'] = df['pctcvr'].apply(pd.to_numeric, errors='coerce').fillna(0.0)
+        data_pd = df.astype({
+            'tdbank_imp_date': np.str
+            , 'media_app_id': np.int64
+            , 'position_id': np.int64
+            , 'pltv': np.int64
+            , 'pctcvr': np.float64
+            , 'pctr': np.float
+            , 'bid_price': np.float
+            , 'response_ecpm': np.float
+            , 'win_price': np.float
+            , 'winner_bid_price': np.float
+        })
         
-        print(df)
+        print(data_pd[['tdbank_imp_date', 'media_app_id', 'position_id', 'pltv', 'pctcvr']])
 
     def read_csv_data(self):
         data_num = 0

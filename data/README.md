@@ -1,7 +1,10 @@
-### 数据
-select response.tdbank_imp_date, response.media_app_id, response.position_id, response.pltv, response.creative_id,
-    response.pctcvr, response.pctr, response.bid_price,
-    response.ecpm as response_ecpm,
+##数据
+select response.tdbank_imp_date, response.media_app_id, response.position_id, response.creative_id,
+    nvl(response.pltv, 0) as pltv, 
+    nvl(response.pctcvr, 0) as pctcvr, 
+    nvl(response.pctr, 0) as pctr, 
+    nvl(response.bid_price, 0) as bid_price,
+    nvl(response.ecpm, 0) as response_ecpm, 
     nvl(impression.win_price, 0) as win_price,
     nvl(loss_win.winner_bid_price, 0) as winner_bid_price
 from (
@@ -42,8 +45,8 @@ left join(
         and win_code <> 1
         and adn_id <> 0
         and winner_bid_price > 0
-        and service_env=3
-        and is_valid=1
+        and service_env=3 
+        and is_valid=1 
         and is_test=0
         and app_id not in (2)
         and media_platform_id=80
@@ -51,5 +54,9 @@ left join(
         and co_type=1
 ) loss_win
 on response.creative_id = loss_win.creative_id and response.request_id = loss_win.request_id
-
+WHERE response.tdbank_imp_date is not null 
+    and response.media_app_id is not null 
+    and response.position_id is not null 
+    and response.creative_id is not null 
+    and (nvl(impression.win_price, 0) <> 0 or nvl(loss_win.winner_bid_price, 0) <> 0)
 
