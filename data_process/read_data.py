@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 # @Time    : 2022/9/27 17:02
 # @Author  : biglongyuan
-# @Site    : 
+# @Site    :
 # @File    : read_data.py
 # @Software: PyCharm
 
-from data_process.read_market_price_data import ReadMarketPriceData
-from data_process.read_impression_data import ReadImpressionPriceData
-from configs.config import yky_dsp_redis_sample_conf, read_impression_last_hour
-from configs.config import yky_dsp_rainbow_conf as rainbow_conf
-from configs.config import rainbow_bid_shading_white_list_name
-from configs.config import position_median_price_day_key, position_median_price_hour_key
+
+from configs.config import DATA_PATH
+import pandas as pd
+import numpy as np
 
 
 class ReadData(object):
@@ -24,88 +22,117 @@ class ReadData(object):
         """
         self.logging = logging
         self.env = env
+        self.data_path = DATA_PATH
 
-    def read_market_price_data(self):
-        """
-        read history market price from redis
-        1、获取天级别的数据 market_price_day_dict
-        2、获取小时级别的数据 market_price_hour_dict
-        3、market_price_dict = market_price_hour_dict + （market_price_day_dict - market_price_hour_dict）
+    def read_csv_data(self):
 
-        """
-        read_market_price_data = ReadMarketPriceData(self.logging, yky_dsp_redis_sample_conf, self.env)
+        df = pd.read_csv(self.data_path, sep="\t")
+        # df['pltv'] = df['pltv'].apply(pd.to_numeric, errors='coerce').fillna(0)
+        # df['pctcvr'] = df['pctcvr'].apply(pd.to_numeric, errors='coerce').fillna(0.0)
+        data_pd = df.astype({
+            'tdbank_imp_date': np.str
+            , 'media_app_id': np.int64
+            , 'position_id': np.int64
+            , 'pltv': np.int64
+            , 'pctcvr': np.float64
+            , 'pctr': np.float
+            , 'bid_price': np.float
+            , 'response_ecpm': np.float
+            , 'win_price': np.float
+            , 'winner_bid_price': np.float
+        })
 
-        # 获取天级别的数据
-        market_price_day_dict = read_market_price_data.get_data(position_median_price_day_key)
+        self.logging.info(f"data_pd:{data_pd.head(10)}")
+        return data_pd
 
-        # 获取小时级别的数据
-        market_price_hour_dict = read_market_price_data.get_data(position_median_price_hour_key)
+    def data_filter(self, data_pd):
+        tmp = data_pd[data_pd['win_price'] > 0]  # win_price>0
+        win_price_list = np.array(tmp['win_price'])
+        per_95 = np.percentile(win_price_list, 95)  # 95 分位数
+        self.logging.info(f"pre_95:{per_95}, median:{np.median(win_price_list)}")
+        data_pd = data_pd[data_pd['win_price'] <= per_95]  # 过滤 95 分位数
 
-        # market_price_dict = market_price_hour_dict + （market_price_day_dict - market_price_hour_dict）
-        market_price_dict = market_price_hour_dict
-        # market_price_dict = {}
-        # 优先取小时，天数据作为兜底
-        for media_app_id, pos_info in market_price_day_dict.items():
-            if media_app_id not in market_price_dict:
-                market_price_dict[media_app_id] = pos_info
-                self.logging.info(f"market_price_dict add media_app_id:{media_app_id}")
+        self.logging.info(f"data_pd:{data_pd.head(10)}")
+        return data_pd
 
-            for pos_id, pltv_info in pos_info.items():
-                if pos_id not in market_price_dict[media_app_id]:
-                    market_price_dict[media_app_id][pos_id] = pltv_info
-                    self.logging.info(f"market_price_dict add media_app_id:{media_app_id}，pos_id:{pos_id}")
+    def get_data_dict_struct(self, data_pd, is_imp=True):
+        response_dict = {}
+        for index, row in data_pd.iterrows():
+            # self.logging.info(f"index:{index}, row:{row}")
+            media_app_id = int(row["media_app_id"])
+            position_id = int(row["position_id"])
+            pltv = int(row["pltv"])
+            value = int(row["response_ecpm"])
+            if is_imp:
+                value = int(row["win_price"])
 
-                for pltv, value in pltv_info.items():
-                    if pltv not in market_price_dict[media_app_id][pos_id]:
-                        market_price_dict[media_app_id][pos_id][pltv] = value
-                        self.logging.info(f"market_price_dict add media_app_id:{media_app_id}，pos_id:{pos_id}, "
-                                          f"pltv:{pltv}, value:{value}")
+            if media_app_id not in response_dict:
+                response_dict[media_app_id] = {}
 
-        self.logging.info(f"market_price_dict:{market_price_dict}")
-        self.logging.info(f"len(market_price_dict):{len(market_price_dict)}, "
-                          f"len(market_price_day_dict):{len(market_price_day_dict)}, "
-                          f"len(market_price_hour_dict):{len(market_price_hour_dict)}")
+            position_dict = response_dict[media_app_id]
+            if position_id not in position_dict:
+                position_dict[position_id] = {}
 
-        return market_price_dict
+            pltv_dict = position_dict[position_id]
+            if pltv not in pltv_dict:
+                pltv_dict[pltv] = []
 
-    def read_impression_price_data(self):
-        """
-        read real time impression pirce, last 1 hour
-        """
-        read_impression_price = ReadImpressionPriceData(self.logging, yky_dsp_redis_sample_conf, self.env)
+            pltv_dict[pltv].append(int(value))
+            position_dict[position_id] = pltv_dict
+            response_dict[media_app_id] = position_dict
 
-        # 获取曝光数据
-        impression_price_dict = read_impression_price.get_data(is_impression=True,
-                                                               last_hour=read_impression_last_hour)
-        self.logging.info(f"len(impression_price_dict):{len(impression_price_dict)}")
+        return response_dict
 
-        # 获取响应未曝光数据
-        no_impression_price_dict = read_impression_price.get_data(is_impression=False,
-                                                                  last_hour=read_impression_last_hour)
-        self.logging.info(f"len(no_impression_price_dict):{len(no_impression_price_dict)}")
-
-        return impression_price_dict, no_impression_price_dict
-
-    def run(self):
+    def data_process(self):
         """
         main function
         """
-        market_price_dict = self.read_market_price_data()
-        impression_price_dict, no_impression_price_dict = self.read_impression_price_data()
+        market_price_dict = {}
+        response_dict = {}
 
-        self.logging.info(f"len market_price_dict:{len(market_price_dict)},"
-                          f"len impression_price_dict:{len(impression_price_dict)},"
-                          f"len no_impression_price_dict:{len(impression_price_dict)}")
+        # 1、获取本地数据
+        data_pd = self.read_csv_data()
+        data_pd = self.data_filter(data_pd)
 
-        return market_price_dict, impression_price_dict, no_impression_price_dict
+        # 2、获取response_dict
+        imp_dict = self.get_data_dict_struct(data_pd[data_pd['win_price'] > 0], True)
+        no_imp_dict = self.get_data_dict_struct(data_pd[data_pd['win_price'] == 0], False)
+
+        # 3、获取中位数
+        for media_app_id, position_info in imp_dict.items():
+            if media_app_id not in market_price_dict:
+                market_price_dict[media_app_id] = {}
+
+            position_dict = market_price_dict[media_app_id]
+            for position_id, pltv_info in position_info.items():
+
+                if position_id not in position_dict:
+                    position_dict[position_id] = {}
+
+                pltv_dict = position_dict[position_id]
+                for pltv, win_price in pltv_info.items():
+                    win_price_list = []
+                    for v in win_price:
+                        if v > 0:
+                            win_price_list.append(v)
+
+                    median = np.median(np.array(win_price_list))
+                    pltv_dict[pltv] = median
+                    position_dict[position_id] = pltv_dict
+                    market_price_dict[media_app_id] = position_dict
+
+        self.logging.info(f"len imp_dict:{len(imp_dict)},  len no_imp_dict:{len(no_imp_dict)}, "
+                          f"len market_price_dict:{len(market_price_dict)}")
+        return market_price_dict, imp_dict, no_imp_dict
 
 
 if __name__ == '__main__':
     import logging
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d ]in %(funcName)-8s  %(message)s"
     )
 
     rd = ReadData(logging)
-    rd.run()
+    rd.data_process()

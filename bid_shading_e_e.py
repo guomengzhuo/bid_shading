@@ -14,7 +14,7 @@ import multiprocessing
 
 import datetime
 from data_process.read_data import ReadData
-from configs.config import redis_key, PLTV_LEVEL, parallel_num, max_search_num, ratio_step, Environment
+from configs.config import PLTV_LEVEL, parallel_num, max_search_num, ratio_step, Environment
 from configs.redis_conf import yky_conf_redis_conf_gz as yky_dsp_redis_conf
 import math
 import numpy as np
@@ -396,8 +396,6 @@ class BidShading(object):
 
         self.PLTV_LEVEL = PLTV_LEVEL
 
-        self.redis_key = redis_key
-
         self.optimal_ratio_dict = {}
 
     def read_data(self):
@@ -407,7 +405,7 @@ class BidShading(object):
         # market_price_dict = media_app_id:position_id:pltv - value
         # impression_price_dict = media_app_id:position_id:pltv - value_list
         self.market_price_dict, self.impression_price_dict, \
-            self.no_impression_price_dict = rd.run()
+            self.no_impression_price_dict = rd.data_process()
 
         self.logging.info(f"len market_price_dict:{len(self.market_price_dict)}, "
                           f"len impression_price_dict:{len(self.impression_price_dict)}")
