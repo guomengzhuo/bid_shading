@@ -1,60 +1,76 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2022/9/28 10:38
+# @Time    : 2022/9/27 17:02
 # @Author  : biglongyuan
-# @Site    : 
-# @File    : test.py
+# @Site    :
+# @File    : read_data.py
 # @Software: PyCharm
 
 
-from multiprocessing import Pool
-import multiprocessing
-import time
+from data_process.read_impression_data import ReadImpressionPriceData
+from configs.config import DATA_PATH
+from pandas.core.frame import DataFrame
+import pandas as pd
 
-d = {}
+
+class ReadData(object):
+    """
+    # 数据读取主类
+    """
+
+    def __init__(self, logging, env="prob"):
+        """
+        # 初始化
+        """
+        self.logging = logging
+        self.env = env
+        self.data_path = DATA_PATH
+
+    def test_read(self):
+
+        df = pd.read_csv(self.data_path, sep="\t")
+        
+        print(df)
+
+    def read_csv_data(self):
+        data_num = 0
+        data_list = []
+        with open(self.data_path, "r") as fr:
+            for line in fr.readlines():
+                data_num += 1
+                if data_num == 1:
+                    continue
+
+                line = line.strip().split("\t")
+                if len(line) != 11 or (int(line[-1]) == 0 and int(line[-2]) == 0):
+                    continue
+
+                data_list.append(line)
+
+        self.logging.info(f"data_num:{data_num}, len(data_list):{len(data_list)}")
 
 
-class BidShading(object):
-    def __init__(self):
-        self.d = {}
-        self.g = {1: 2}
-        self.c = {1: 2}
-
-    def func(self, i, j, z):
-        l = {}
-        l[i] = i * j
-        l = self.f(l)
-        return {i: j}
-
-    def func_1(self, i):
-        print(f"proc_id={multiprocessing.current_process().name}")
-        return {1: 2}
-
-    def f(self, l):
-        l[2] = 3
-        return l
+        return data_list
 
     def run(self):
-        p = Pool(5)
-        res_l = []
-        j = 199
-        a_dict = multiprocessing.Manager().dict(self.g)
-        for i in range(10):
-            # res = p.apply_async(self.func, args=(i+j, j, a_dict))
-            res = p.apply_async(self.func_1, args=(i, ))
-            res_l.append(res)
-            # print(f"======{i}======")
+        """
+        main function
+        """
+        market_price_dict = self.read_market_price_data()
+        impression_price_dict, no_impression_price_dict = self.read_impression_price_data()
 
-        p.close()  # 关闭进程池，不再接受请求
-        p.join()  # 等待所有的子进程结束
+        self.logging.info(f"len market_price_dict:{len(market_price_dict)},"
+                          f"len impression_price_dict:{len(impression_price_dict)},"
+                          f"len no_impression_price_dict:{len(impression_price_dict)}")
 
-        for res in res_l:
-            print(f"res:{res.get()}")
-            d.update(res.get())
-
-        print(d)
+        return market_price_dict, impression_price_dict, no_impression_price_dict
 
 
 if __name__ == '__main__':
-   b = BidShading()
-   b.run()
+    import logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d ]in %(funcName)-8s  %(message)s"
+    )
 
+    rd = ReadData(logging)
+    rd.test_read()

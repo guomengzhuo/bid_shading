@@ -16,7 +16,6 @@ import datetime
 from data_process.read_data import ReadData
 from configs.config import redis_key, PLTV_LEVEL, parallel_num, max_search_num, ratio_step, Environment
 from configs.redis_conf import yky_conf_redis_conf_gz as yky_dsp_redis_conf
-from data_process.redis_process import RedisProcess
 import math
 import numpy as np
 
@@ -37,12 +36,6 @@ else:
         filemode="a+",
         format="%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d ]in %(funcName)-8s  %(message)s"
     )
-
-# yky tof alarm configs
-yky_tof_conf = {
-    "sys_id": "25211",
-    "appkey": "06d8a9336dcd485da83e5dc9d1feae7d"
-}
 
 
 class Bandit(object):
@@ -389,7 +382,7 @@ class BidShading(object):
     bid shading 主类
     """
 
-    def __init__(self, logging, yky_dsp_db_env):
+    def __init__(self, logging):
         """
         初始化
         """
@@ -404,7 +397,6 @@ class BidShading(object):
         self.PLTV_LEVEL = PLTV_LEVEL
 
         self.redis_key = redis_key
-        self.yky_dsp_redis_env = yky_dsp_db_env
 
         self.optimal_ratio_dict = {}
 
@@ -444,52 +436,6 @@ class BidShading(object):
         """
         return
 
-    def write_data(self):
-        """
-        输出 bid shading e-e结果到redis
-        """
-        # 输出预算平滑阈值至redis
-        redis_pro = RedisProcess(self.logging, yky_dsp_redis_conf, self.yky_dsp_redis_env)
-
-        self.logging.info(f"optimal_ratio_dict:{self.optimal_ratio_dict}")
-
-        write_reids_dict = {}
-        ratio_dict_length = len(self.optimal_ratio_dict)
-        key_num = 5
-        every_key_len = int(ratio_dict_length/key_num)
-        key_index = 1
-        start = 0
-
-        for key, value in self.optimal_ratio_dict.items():
-            start += 1
-            write_reids_dict[key] = value
-
-            if start >= every_key_len and key_index < key_num:
-                is_ok_redis = redis_pro.write_redis(f"{self.redis_key}:{key_index}", write_reids_dict, is_zip=True)
-                if not is_ok_redis:
-                    msg = f'[write_data][error] failed is_ok_redis={is_ok_redis} !! '
-                    self.logging.info(f"level:{key_index}, msg:{msg}")
-                    return False, msg
-
-                write_reids_dict = {}
-                start = 0
-                key_index += 1
-
-        if len(write_reids_dict) > 0:
-            is_ok_redis = redis_pro.write_redis(f"{self.redis_key}:{key_index}", write_reids_dict, is_zip=True)
-            if not is_ok_redis:
-                msg = f'[write_data][error] failed is_ok_redis={is_ok_redis} !! '
-                self.logging.info(f"level:{key_index}, msg:{msg}")
-                return False, msg
-
-        is_ok_redis = redis_pro.write_redis(f"{self.redis_key}", self.optimal_ratio_dict, is_zip=True)
-        if not is_ok_redis:
-            msg = f'[write_data][error] failed is_ok_redis={is_ok_redis} !! '
-            self.logging.info(f"msg:{msg}")
-            return False, msg
-
-        return True, "[success]"
-
     def run(self):
         self.logging.info("run -> start")
 
@@ -521,38 +467,18 @@ class BidShading(object):
             self.optimal_ratio_dict.update(res.get())
 
         self.logging.info(f"run -> end len(optimal_ratio_dict):{len(self.optimal_ratio_dict)}")
- 
-        is_ok = False
-        if Environment != "offline":
-            # 写入
-            if len(self.optimal_ratio_dict) > 0:
-                is_ok, msg = self.write_data()
-                return is_ok, msg
-            else:
-                self.logging.info(f"[main] optimal_ratio_dict adjust empty")
-        else:
-            self.logging.info(f"output optimal_ratio_dict:{self.optimal_ratio_dict}")
+        self.logging.info(f"output optimal_ratio_dict:{self.optimal_ratio_dict}")
 
         # 3、计算完 删除临时文件
         self.remove_local_backend()
-        return is_ok, "empty adjust list "
 
 
 def main():
-    yky_dsp_db_env = "test"
-    if Environment != "offline":
-        yky_dsp_db_env = sys.argv[1]
-
-    bs = BidShading(logging, yky_dsp_db_env)
-    is_ok, msg = bs.run()
+    bs = BidShading(logging)
+    bs.run()
 
 
 if __name__ == '__main__':
-    if Environment != "offline":
-        if len(sys.argv) != 2 and (sys.argv[1] not in ('test', 'production')):
-            sys.stderr.write("Usage:python3 bid_shading_e_e.py test|production\n")
-            sys.exit(-1)
-
-    # python3 bid_shading_e_e.py production > train.log 2>&1 &
+    # python3 bid_shading_e_e.py > train.log 2>&1 &
     main()
     
