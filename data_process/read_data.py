@@ -7,7 +7,6 @@
 
 from data_process.read_market_price_data import ReadMarketPriceData
 from data_process.read_impression_data import ReadImpressionPriceData
-from data_process.rainbow_process import RainbowProcess
 from configs.config import yky_dsp_redis_sample_conf, read_impression_last_hour
 from configs.config import yky_dsp_rainbow_conf as rainbow_conf
 from configs.config import rainbow_bid_shading_white_list_name
@@ -25,34 +24,6 @@ class ReadData(object):
         """
         self.logging = logging
         self.env = env
-
-    def read_bid_shading_media_white_list(self):
-        media_white_list = []
-        if self.env == "offline":
-            media_white_list = [30391, 30390, 30718, 30658, 30659, 30725, 30726, 30827, 30832, 30428,
-                                30429, 30731, 30730]
-            return True, set(media_white_list)
-
-        rainbow_env = "prod"
-        ad_type_pro = RainbowProcess(rainbow_conf, rainbow_bid_shading_white_list_name, env=rainbow_env)
-        is_ok, result = ad_type_pro.read_conf()
-
-        if not is_ok:
-            self.logging.error(f"read RainbowProcess failed name:{rainbow_bid_shading_white_list_name}")
-            return False, media_white_list
-
-        self.logging.info(f"result:{result}")
-
-        common_para = result["bid_shading_adjust_media_list"]
-        if common_para == "":
-            self.logging.error(f"read RainbowProcess bid_shading_adjust_media_list is empty")
-            return False, media_white_list
-
-        for media_id in common_para.split(","):
-            media_white_list.append(int(media_id))
-
-        self.logging.info(f"media_white_list:{media_white_list}")
-        return True, set(media_white_list)
 
     def read_market_price_data(self):
         """
@@ -119,16 +90,14 @@ class ReadData(object):
         """
         main function
         """
-        _, media_white_list = self.read_bid_shading_media_white_list()
         market_price_dict = self.read_market_price_data()
         impression_price_dict, no_impression_price_dict = self.read_impression_price_data()
 
-        self.logging.info(f"len media_white_list:{len(media_white_list)},"
-                          f"len market_price_dict:{len(market_price_dict)},"
+        self.logging.info(f"len market_price_dict:{len(market_price_dict)},"
                           f"len impression_price_dict:{len(impression_price_dict)},"
                           f"len no_impression_price_dict:{len(impression_price_dict)}")
 
-        return media_white_list, market_price_dict, impression_price_dict, no_impression_price_dict
+        return market_price_dict, impression_price_dict, no_impression_price_dict
 
 
 if __name__ == '__main__':

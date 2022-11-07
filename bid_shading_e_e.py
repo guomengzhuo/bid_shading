@@ -314,12 +314,15 @@ class Bandit(object):
                     # 出价真实曝光率 或者 靠近market price 认为会曝光
                     imp_count_map[max_probs_key] += 1
 
+                rate = float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
                 if rate < 0.01:
                     rate = 0.01
 
             reward_weight = self.calculate_reward_weigth(max_probs_key, market_price_value, right_range, left_range)
 
             key_sample_freq = chosen_count_map[max_probs_key]
+
+            # TODO: np.random.normal(rate, 1) 需要优化
             estimared_rewards_map[max_probs_key] = (key_sample_freq * estimared_rewards_map[max_probs_key] +
                                                     reward_weight * np.random.normal(rate, 1)) / (key_sample_freq + 1)
 
@@ -393,7 +396,6 @@ class BidShading(object):
         self.logging = logging
 
         # 价格数据初始化
-        self.media_white_list = set()
         self.market_price_dict = {}
         self.impression_price_dict = {}
         self.media_position_dict = {}
@@ -410,10 +412,9 @@ class BidShading(object):
         # 1、读取 bid shading输入数据
         rd = ReadData(logging=self.logging, env=Environment)
 
-        # self.media_white_list = [int(media_app_id),...]
         # market_price_dict = media_app_id:position_id:pltv - value
         # impression_price_dict = media_app_id:position_id:pltv - value_list
-        self.media_white_list, self.market_price_dict, self.impression_price_dict, \
+        self.market_price_dict, self.impression_price_dict, \
             self.no_impression_price_dict = rd.run()
 
         self.logging.info(f"len market_price_dict:{len(self.market_price_dict)}, "
@@ -421,9 +422,6 @@ class BidShading(object):
 
         # 2、获取media、position映射关系
         for media_id, position_info in self.market_price_dict.items():
-            if int(media_id) not in self.media_white_list:
-                # 没有在二价结算 白名单中
-                continue
 
             if media_id not in self.media_position_dict:
                 self.media_position_dict[media_id] = set(position_info.keys())
@@ -431,9 +429,6 @@ class BidShading(object):
                 self.media_position_dict[media_id] = self.media_position_dict[media_id] | set(position_info.keys())
 
         for media_id, position_info in self.impression_price_dict.items():
-            if int(media_id) not in self.media_white_list:
-                # 没有在二价结算 白名单中
-                continue
 
             if media_id not in self.media_position_dict:
                 self.media_position_dict[media_id] = set(position_info.keys())
