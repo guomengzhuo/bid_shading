@@ -110,16 +110,11 @@ class ReadData(object):
                     position_dict[position_id] = {}
 
                 pltv_dict = position_dict[position_id]
-                for pltv, win_price in pltv_info.items():
-                    win_price_list = []
-                    for v in win_price:
-                        if v > 0:
-                            win_price_list.append(v)
+                for pltv, win_price_list in pltv_info.items():
+                    pltv_dict[pltv] = np.median(np.array(win_price_list))
 
-                    median = np.median(np.array(win_price_list))
-                    pltv_dict[pltv] = median
-                    position_dict[position_id] = pltv_dict
-                    market_price_dict[media_app_id] = position_dict
+                position_dict[position_id] = pltv_dict
+            market_price_dict[media_app_id] = position_dict
 
         self.logging.info(f"len imp_dict:{len(imp_dict)},  len no_imp_dict:{len(no_imp_dict)}, "
                           f"len market_price_dict:{len(market_price_dict)}")
