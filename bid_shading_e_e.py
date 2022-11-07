@@ -370,6 +370,9 @@ class Bandit(object):
 
             if len(market_price) < 1 or len(impression_price) < 1 or len(no_impression_price) < 1:
                 # 数据不合格跳过
+                logging.info(f"len(market_price):{len(market_price)} < 1 "
+                             f"or len(impression_price):{len(impression_price)} < 1 "
+                             f"or len(no_impression_price):{len(no_impression_price)} < 1")
                 continue
 
             self.calculate_market_price(media_app_id, position_id, market_price, impression_price,
@@ -533,7 +536,8 @@ class BidShading(object):
             else:
                 self.logging.info(f"[main] optimal_ratio_dict adjust empty")
         else:
-            self.logging.info(f"self.optimal_ratio_dict:{self.optimal_ratio_dict}")
+            self.logging.info(f"output optimal_ratio_dict:{self.optimal_ratio_dict}")
+
         # 3、计算完 删除临时文件
         self.remove_local_backend()
         return is_ok, "empty adjust list "

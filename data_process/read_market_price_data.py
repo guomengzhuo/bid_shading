@@ -46,7 +46,32 @@ class ReadMarketPriceData(object):
             data_dict = json.loads(fr.read())
             self.logging.info(f"len data_dict:{len(data_dict)}")
 
-        return True, data_dict
+        output_dict = {}
+        for media_app_id, media_info in data_dict.items():
+            media_app_id = int(media_app_id)
+            if media_app_id not in output_dict:
+                output_dict[media_app_id] = {}
+
+            position_dict = output_dict[media_app_id]
+            for position_id, position_info in media_info.items():
+                position_id = int(position_id)
+                if position_id not in position_dict:
+                    position_dict[position_id] = {}
+
+                pltv_dict = position_dict[position_id]
+                for pltv, pltv_info in position_info.items():
+                    pltv = int(pltv)
+                    if pltv not in pltv_dict:
+                        pltv_dict[pltv] = 0
+
+                    pltv_dict[pltv] = int(pltv_info)
+
+                position_dict[position_id] = pltv_dict
+
+            output_dict[media_app_id] = position_dict
+
+        # self.logging.info(f"output_dict:{output_dict}")
+        return True, output_dict
 
     def get_data(self, redis_key):
         """
@@ -56,7 +81,7 @@ class ReadMarketPriceData(object):
         self.logging.info("start get data!")
         if self.env == "offline":
             is_ok, output_dict = self.get_local_data(redis_key)
-            self.logging.info(f"len(output_dict):{len(output_dict)}, output_dict:{output_dict}")
+            self.logging.info(f"get_local_data len(output_dict):{len(output_dict)}, output_dict:{output_dict}")
             return output_dict
 
         redis_client = redis.Redis(host=self.redis_conf["host"],

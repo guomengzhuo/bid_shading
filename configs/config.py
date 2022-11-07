@@ -33,7 +33,7 @@ redis_key = "yky:dsp:bidshading_ee:marketprice:pos"
 PLTV_LEVEL = [1, 2, 3, 4]
 
 # 并行数量
-parallel_num = 14
+parallel_num = 6
 
 # 最大搜索数量
 max_search_num = 100
