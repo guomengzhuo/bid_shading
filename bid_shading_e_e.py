@@ -19,6 +19,7 @@ from configs.redis_conf import yky_conf_redis_conf_gz as yky_dsp_redis_conf
 from data_process.redis_process import RedisProcess
 import math
 import numpy as np
+import matplotlib.pyplot as plt
 from collections import defaultdict
 import logging
 
@@ -306,20 +307,34 @@ class Bandit(object):
             # 步骤3：2、update
             rate = 0.01
             if max_probs_key in imp_count_map and max_probs_key in imp_count_map:
-                rate = float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
+                # rate = float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
                 # np.random.randn(1)[0] -> 改为基于历史数据的采样
                 # beta 先验  float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
-                if np.random.rand(1)[0] * 1.5 < rate:
+                sample_rate = np.random.beta(imp_count_map[max_probs_key], chosen_count_map[max_probs_key] - imp_count_map[max_probs_key])
+                is_win = np.random.binomial(1, sample_rate)
+                if is_win == 1:
                     # 出价真实曝光率 或者 靠近market price 认为会曝光
                     imp_count_map[max_probs_key] += 1
                     for x in chosen_count_map.keys():
                         if x > max_probs_key:
                             imp_count_map[x] += 1
                             chosen_count_map[x] += 1
+                            # 同时更新x的reward
+                            reward_weight = self.calculate_reward_weigth(x, market_price_value, right_range,
+                                                                         left_range)
+                            estimared_rewards_map[x] = (chosen_count_map[x] * estimared_rewards_map[x] +
+                                                        reward_weight * np.random.normal(rate, 1)) / (
+                                                                               chosen_count_map[x] + 1)
                 else:
                     for x in chosen_count_map.keys():
                         if x < max_probs_key:
                             chosen_count_map[x] += 1
+                            # 同时更新x的reward
+                            reward_weight = self.calculate_reward_weigth(x, market_price_value, right_range,
+                                                                         left_range)
+                            estimared_rewards_map[x] = (chosen_count_map[x] * estimared_rewards_map[x] +
+                                                        reward_weight * np.random.normal(rate, 1)) / (
+                                                                               chosen_count_map[x] + 1)
 
                 rate = float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
                 if rate < 0.01:
@@ -356,11 +371,7 @@ class Bandit(object):
         plt.scatter(_market_price_value, win_rate[_market_price_value], c="r")
 
         plt.show()
-
-        plt.scatter(estimared_rewards_map.keys(), estimared_rewards_map.values())
-        plt.show()
         """
-
         return market_price, chosen_count_map, imp_count_map
 
     def do_process(self, media_app_id, media_position_dict_obj, market_price_dict_obj, impression_price_dict_obj,
