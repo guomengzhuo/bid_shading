@@ -19,8 +19,7 @@ from configs.redis_conf import yky_conf_redis_conf_gz as yky_dsp_redis_conf
 from data_process.redis_process import RedisProcess
 import math
 import numpy as np
-
-
+from collections import defaultdict
 import logging
 
 if Environment == "offline":
@@ -244,9 +243,9 @@ class Bandit(object):
         """
         e-e探索：UCB方式
         """
-        estimared_rewards_map = {}  # 记录reward
+        estimared_rewards_map = defaultdict(int)  # 记录reward
         chosen_count_map = {}  # 记录选择次数
-        imp_count_map = {}  # 记录曝光次数
+        imp_count_map = defaultdict(int)  # 记录曝光次数
 
         right_range = max(abs(impression_price_list[-1] - market_price_value), 1)
         left_range = max(abs(market_price_value - impression_price_list[0]), 1)
@@ -310,9 +309,17 @@ class Bandit(object):
                 rate = float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
                 # np.random.randn(1)[0] -> 改为基于历史数据的采样
                 # beta 先验  float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
-                if np.random.randn(1)[0] < rate or market_price_value * 0.9 < max_probs_key < market_price_value * 1.1:
+                if np.random.rand(1)[0] * 1.5 < rate:
                     # 出价真实曝光率 或者 靠近market price 认为会曝光
                     imp_count_map[max_probs_key] += 1
+                    for x in chosen_count_map.keys():
+                        if x > max_probs_key:
+                            imp_count_map[x] += 1
+                            chosen_count_map[x] += 1
+                else:
+                    for x in chosen_count_map.keys():
+                        if x < max_probs_key:
+                            chosen_count_map[x] += 1
 
                 rate = float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
                 if rate < 0.01:
@@ -333,6 +340,26 @@ class Bandit(object):
             if value > market_price_score:
                 market_price_score = value
                 market_price = price
+
+        # 计算竞得率
+        """
+        win_rate = {
+            i: imp_count_map[i] / chosen_count_map[i] for i in chosen_count_map.keys()
+        }
+
+        for i in win_rate.keys():
+            if i > market_price_value:
+                _market_price_value = i
+                break
+        fig = plt.figure(dpi=300)
+        plt.scatter(win_rate.keys(), win_rate.values(), s=10)
+        plt.scatter(_market_price_value, win_rate[_market_price_value], c="r")
+
+        plt.show()
+
+        plt.scatter(estimared_rewards_map.keys(), estimared_rewards_map.values())
+        plt.show()
+        """
 
         return market_price, chosen_count_map, imp_count_map
 
