@@ -17,6 +17,7 @@ from data_process.read_data import ReadData
 from configs.config import PLTV_LEVEL, parallel_num, max_search_num, ratio_step, Environment
 import math
 import numpy as np
+
 import logging
 
 if Environment == "offline":
@@ -130,6 +131,8 @@ class Bandit(object):
             market_price, chosen_count_map, imp_count_map = self.bandit(market_price_value,
                                                                         impression_price_list,
                                                                         no_impression_price_list)
+            
+            
 
             logging.info(f"calculate default data proc_id={multiprocessing.current_process().name},"
                          f"media_app_id:{media_app_id}, position_id:{position_id},"
@@ -300,8 +303,11 @@ class Bandit(object):
                 rate = float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
                 # np.random.randn(1)[0] -> 改为基于历史数据的采样
                 # beta 先验  float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
-                if np.random.randn(1)[0] < rate or market_price_value * 0.9 < max_probs_key < market_price_value * 1.1:
-                    # 出价真实曝光率 或者 靠近market price 认为会曝光
+                sample_rate = np.random.beta(imp_count_map[max_probs_key],
+                                             chosen_count_map[max_probs_key] - imp_count_map[max_probs_key])
+                is_win = np.random.binomial(1, sample_rate)
+
+                if is_win == 1:
                     imp_count_map[max_probs_key] += 1
 
                 rate = float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
