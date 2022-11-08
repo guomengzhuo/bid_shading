@@ -5,13 +5,12 @@
 # @File    : UCB.py
 # @Software: PyCharm
 
-from tools.market_price_distributed import Distributed_Image
+import logging
 import math
 import multiprocessing
 import numpy as np
-from configs.config import PLTV_LEVEL, parallel_num, max_search_num, ratio_step, Environment
-
-import logging
+from configs.config import PLTV_LEVEL, max_search_num, ratio_step, Environment
+from tools.market_price_distributed import Distributed_Image
 
 if Environment == "offline":
     logging.basicConfig(
@@ -440,4 +439,3 @@ class UCBBandit(object):
                                         no_impression_price, optimal_ratio_dict)
 
         return optimal_ratio_dict
-

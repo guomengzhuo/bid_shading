@@ -6,22 +6,19 @@
 # @Software: PyCharm
 
 
+import datetime
+import logging
+import math
+import matplotlib.pyplot as plt
+import multiprocessing
+import numpy as np
 import os
 import sys
-
-from multiprocessing import Pool
-import multiprocessing
-
-import datetime
-from data_process.read_data import ReadData
-
-from configs.config import PLTV_LEVEL, parallel_num, max_search_num, ratio_step, Environment
 from bandit.UCB import UCBBandit
-import math
-import numpy as np
-import matplotlib.pyplot as plt
 from collections import defaultdict
-import logging
+from configs.config import parallel_num, Environment
+from data_process.read_data import ReadData
+from multiprocessing import Pool
 
 if Environment == "offline":
     logging.basicConfig(
@@ -55,8 +52,6 @@ class BidShading(object):
         self.impression_price_dict = {}
         self.media_position_dict = {}
         self.no_impression_price_dict = {}
-
-        self.PLTV_LEVEL = PLTV_LEVEL
 
         self.optimal_ratio_dict = {}
 

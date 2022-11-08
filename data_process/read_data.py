@@ -6,9 +6,9 @@
 # @Software: PyCharm
 
 
-from configs.config import DATA_PATH
-import pandas as pd
 import numpy as np
+import pandas as pd
+from configs.config import DATA_PATH
 
 
 class ReadData(object):
