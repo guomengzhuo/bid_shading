@@ -9,13 +9,11 @@
 import datetime
 import logging
 import math
-import matplotlib.pyplot as plt
 import multiprocessing
 import numpy as np
 import os
 import sys
 from bandit.UCB import UCBBandit
-from collections import defaultdict
 from configs.config import parallel_num, Environment
 from data_process.read_data import ReadData
 from multiprocessing import Pool
