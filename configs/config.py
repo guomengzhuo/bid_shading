@@ -5,10 +5,7 @@
 # @File    : config.py
 # @Software: PyCharm
 
-
-# env
 Environment = "offline"
-
 DATA_PATH = "./data/bid_shading.csv"
 
 

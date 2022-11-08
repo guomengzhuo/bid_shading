@@ -15,11 +15,8 @@ import multiprocessing
 import datetime
 from data_process.read_data import ReadData
 from configs.config import PLTV_LEVEL, parallel_num, max_search_num, ratio_step, Environment
-from configs.redis_conf import yky_conf_redis_conf_gz as yky_dsp_redis_conf
 import math
 import numpy as np
-
-
 import logging
 
 if Environment == "offline":
@@ -400,7 +397,7 @@ class BidShading(object):
 
     def read_data(self):
         # 1、读取 bid shading输入数据
-        rd = ReadData(logging=self.logging, env=Environment)
+        rd = ReadData(logging=self.logging)
 
         # market_price_dict = media_app_id:position_id:pltv - value
         # impression_price_dict = media_app_id:position_id:pltv - value_list

@@ -16,12 +16,11 @@ class ReadData(object):
     # 数据读取主类
     """
 
-    def __init__(self, logging, env="prob"):
+    def __init__(self, logging):
         """
         # 初始化
         """
         self.logging = logging
-        self.env = env
         self.data_path = DATA_PATH
 
     def read_csv_data(self):
