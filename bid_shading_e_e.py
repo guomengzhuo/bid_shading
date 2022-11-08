@@ -304,7 +304,11 @@ class Bandit(object):
                 # rate = float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
                 # np.random.randn(1)[0] -> 改为基于历史数据的采样
                 # beta 先验  float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
-                if np.random.randn(1)[0] < rate or market_price_value * 0.9 < max_probs_key < market_price_value * 1.1:
+                sample_rate = np.random.beta(imp_count_map[max_probs_key],
+                                             chosen_count_map[max_probs_key] - imp_count_map[max_probs_key])
+                is_win = np.random.binomial(1, sample_rate)
+
+                if is_win == 1:
                     # 出价真实曝光率 或者 靠近market price 认为会曝光
                     imp_count_map[max_probs_key] += 1
                     for x in chosen_count_map.keys():
