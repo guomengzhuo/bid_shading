@@ -295,6 +295,7 @@ class UCBBandit(object):
             total_count = sum(chosen_count_map.values())
             # 步骤3：1、select arms
             for k in chosen_key_set:
+                # TODO 加入beta期望、方差
                 upper_bound_probs = estimared_rewards_map[k] + self.calculate_delta(total_count, chosen_count_map[k])
                 if max_upper_bound_probs < upper_bound_probs:
                     max_upper_bound_probs = upper_bound_probs
@@ -304,7 +305,7 @@ class UCBBandit(object):
                 continue
 
             chosen_count_map[max_probs_key] += 1
-
+            min_market_price = max_probs_key
             # 步骤3：2、update
             if max_probs_key in imp_count_map and max_probs_key in imp_count_map:
                 rate = float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
@@ -314,7 +315,7 @@ class UCBBandit(object):
                                              chosen_count_map[max_probs_key] - imp_count_map[max_probs_key])
                 is_win = np.random.binomial(1, sample_rate)
                 index = price_list.index(max_probs_key)
-                
+
                 if is_win == 1:
                     # 选择的max_probs_key能曝光，向左搜索（减价）
                     index = price_list.index(max_probs_key)
@@ -366,6 +367,9 @@ class UCBBandit(object):
                         imp_count_map[x] += 1
                         chosen_count_map[x] += 1
 
+            curl_right_range = max(abs(impression_price_list[-1] - min_market_price), 1)
+            curl_left_range = max(abs(min_market_price - impression_price_list[0]), 1)
+
             for price in chosen_key_set:
 
                 if price not in imp_count_map:
@@ -373,7 +377,7 @@ class UCBBandit(object):
                 rate = float(imp_count_map[price]) / chosen_count_map[price]
                 if rate < 0.01:
                     rate = 0.01
-                reward_weight = self.calculate_reward_weigth(price, market_price_value, right_range, left_range)
+                reward_weight = self.calculate_reward_weigth(price, min_market_price, curl_right_range, curl_left_range)
 
                 key_sample_freq = chosen_count_map[price]
 
