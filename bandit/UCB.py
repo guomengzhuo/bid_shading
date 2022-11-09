@@ -182,14 +182,12 @@ class UCBBandit(object):
         gain = 0
 
         for price, chosen_count in chosen_count_map.items():
-            imp_count = 0
-            if chosen_count < 1:
+            if chosen_count < 1 or ecpm not in imp_count_map:
                 continue
 
-            if ecpm in imp_count_map:
-                imp_count = imp_count_map[ecpm]
+            imp_count = imp_count_map[ecpm]
 
-            # 最大化 impression rate * (ecpm - price)
+            # 最大化 impression_rate * (ecpm - price)
             expect_gain = (imp_count * 1.0 / chosen_count) * (ecpm - price)
             if expect_gain > gain:
                 gain = expect_gain
@@ -288,15 +286,23 @@ class UCBBandit(object):
         len_price_list = len(price_list)
 
         # 步骤3： bandit 计算
+        sampling_imp_count = {}
+        total_count = sum(chosen_count_map.values())
+        old_chosen_count_map = chosen_count_map
+        sampling_chosen_count_map = {}
         cal_num = min(len(imp_count_map) * 10, 5000)
         for sampling_freq in range(1, cal_num):
             max_upper_bound_probs = 0.0
             max_probs_key = 0
-            total_count = sum(chosen_count_map.values())
+            total_count += sum(sampling_imp_count.values())
             # 步骤3：1、select arms
             for k in chosen_key_set:
                 # TODO 加入beta期望、方差
-                upper_bound_probs = estimared_rewards_map[k] + self.calculate_delta(total_count, chosen_count_map[k])
+                sampling_count = old_chosen_count_map[k]
+                if k in sampling_chosen_count_map:
+                    sampling_count += sampling_chosen_count_map[k]
+
+                upper_bound_probs = estimared_rewards_map[k] + self.calculate_delta(total_count, sampling_count)
                 if max_upper_bound_probs < upper_bound_probs:
                     max_upper_bound_probs = upper_bound_probs
                     max_probs_key = k
@@ -305,10 +311,13 @@ class UCBBandit(object):
                 continue
 
             chosen_count_map[max_probs_key] += 1
+            if max_probs_key not in sampling_chosen_count_map:
+                sampling_chosen_count_map[max_probs_key] = 0
+            sampling_chosen_count_map[max_probs_key] += 1
+
             min_market_price = max_probs_key
             # 步骤3：2、update
             if max_probs_key in imp_count_map and max_probs_key in imp_count_map:
-                rate = float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
                 # np.random.randn(1)[0] -> 改为基于历史数据的采样
                 # beta 先验  float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
                 sample_rate = np.random.beta(imp_count_map[max_probs_key],
@@ -361,25 +370,25 @@ class UCBBandit(object):
                     if x not in imp_count_map:
                         imp_count_map[x] = 0
 
-                    if x < min_market_price:
-                        chosen_count_map[x] += 1
-                    elif x >= min_market_price:
+                    chosen_count_map[x] += 1
+                    if x >= min_market_price:
                         imp_count_map[x] += 1
-                        chosen_count_map[x] += 1
+
+                        if x not in sampling_imp_count:
+                            sampling_imp_count[x] = 0
+                        sampling_imp_count[x] += 1
 
             curl_right_range = max(abs(impression_price_list[-1] - min_market_price), 1)
             curl_left_range = max(abs(min_market_price - impression_price_list[0]), 1)
 
             for price in chosen_key_set:
 
-                if price not in imp_count_map:
+                if price not in sampling_imp_count:
                     continue
                 rate = float(imp_count_map[price]) / chosen_count_map[price]
-                if rate < 0.01:
-                    rate = 0.01
                 reward_weight = self.calculate_reward_weigth(price, min_market_price, curl_right_range, curl_left_range)
 
-                key_sample_freq = chosen_count_map[price]
+                key_sample_freq = sampling_imp_count[price]
 
                 # TODO: np.random.normal(rate, 1) 需要优化
                 estimared_rewards_map[price] = (key_sample_freq * estimared_rewards_map[price] +
@@ -393,7 +402,7 @@ class UCBBandit(object):
                 market_price_score = value
                 market_price = price
 
-        Dis_Image.win_rate_image(market_price_value, imp_count_map, chosen_count_map)
+        Dis_Image.win_rate_image(market_price_value, imp_count_map, chosen_count_map, impression_price_list[0])
 
         return market_price, chosen_count_map, imp_count_map
 

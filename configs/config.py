@@ -17,7 +17,7 @@ PLTV_LEVEL = [1, 2, 3, 4]
 parallel_num = 6
 
 # 最大搜索数量
-max_search_num = 100
+max_search_num = 200000
 
 # 存在redis的步长
 ratio_step = 10
