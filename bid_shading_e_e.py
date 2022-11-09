@@ -6,17 +6,20 @@
 # @Software: PyCharm
 
 
-import datetime
-import logging
-import math
-import multiprocessing
-import numpy as np
 import os
-import sys
-from bandit.UCB import UCBBandit
-from configs.config import parallel_num, Environment
-from data_process.read_data import ReadData
+
 from multiprocessing import Pool
+import multiprocessing
+
+import datetime
+from data_process.read_data import ReadData
+from data_process.result_evaluate import ResultEvaluate
+from configs.config import DATA_PATH, TEST_DATA_PATH
+from configs.config import PLTV_LEVEL, parallel_num, Environment
+from bandit.UCB import UCBBandit
+import logging
+import numpy as np
+import pandas as pd
 
 if Environment == "offline":
     logging.basicConfig(
@@ -53,14 +56,14 @@ class BidShading(object):
 
         self.optimal_ratio_dict = {}
 
-    def read_data(self):
+    def read_data(self, data_path=DATA_PATH):
         # 1、读取 bid shading输入数据
-        rd = ReadData(logging=self.logging)
+        rd = ReadData(logging=self.logging, data_path=data_path)
 
         # market_price_dict = media_app_id:position_id:pltv - value
         # impression_price_dict = media_app_id:position_id:pltv - value_list
-        self.market_price_dict, self.impression_price_dict, \
-            self.no_impression_price_dict = rd.data_process()
+        self.market_price_dict, self.impression_price_dict, self.no_impression_price_dict,\
+            self.norm_dict = rd.data_process()
 
         self.logging.info(f"len market_price_dict:{len(self.market_price_dict)}, "
                           f"len impression_price_dict:{len(self.impression_price_dict)}")
@@ -92,11 +95,20 @@ class BidShading(object):
     def run(self):
         self.logging.info("run -> start")
 
-
         bandit = UCBBandit()
 
         # 1、读取相关要处理的的数据
-        self.read_data()
+        self.read_data(DATA_PATH)
+
+        re = ResultEvaluate(self.logging)
+
+        res_l = {}  # 保存进程返回结果
+        evaluate_l = {}
+        for media_app_id in self.media_position_dict.keys():
+            res = bandit.do_process(media_app_id, self.media_position_dict, self.market_price_dict,
+                                    self.impression_price_dict, self.no_impression_price_dict)
+            evaluate_l[res] = re.result_evaluation(res)
+            res_l[media_app_id] = res
 
         # 2、计算并保存数据
         if Environment != "offline":
