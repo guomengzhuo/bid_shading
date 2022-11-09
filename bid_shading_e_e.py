@@ -15,7 +15,7 @@ import datetime
 from data_process.read_data import ReadData
 from data_process.result_evaluate import ResultEvaluate
 from configs.config import DATA_PATH, TEST_DATA_PATH
-from configs.config import PLTV_LEVEL, parallel_num, Environment
+from configs.config import PLTV_LEVEL, parallel_num, Environment, Multi_Process
 from bandit.UCB import UCBBandit
 import logging
 import numpy as np
@@ -102,39 +102,34 @@ class BidShading(object):
 
         re = ResultEvaluate(self.logging)
 
-        res_l = {}  # 保存进程返回结果
-        evaluate_l = {}
-        for media_app_id in self.media_position_dict.keys():
-            res = bandit.do_process(media_app_id, self.media_position_dict, self.market_price_dict,
-                                    self.impression_price_dict, self.no_impression_price_dict)
-            evaluate_l[res] = re.result_evaluation(res)
-            res_l[media_app_id] = res
-
         # 2、计算并保存数据
         if Environment != "offline":
-            pool = Pool(parallel_num)  # 构建进程池
-            res_l = []  # 保存进程返回结果
-            mgr = multiprocessing.Manager()
-            media_position_dict_obj = mgr.dict(self.media_position_dict)
-            market_price_dict_obj = mgr.dict(self.market_price_dict)
-            impression_price_dict_obj = mgr.dict(self.impression_price_dict)
-            no_impression_obj = mgr.dict(self.no_impression_price_dict)
+            if not Multi_Process:
+                res_l = {}  # 保存进程返回结果
+                evaluate_l = {}
+                for media_app_id in self.media_position_dict.keys():
+                    res = bandit.do_process(media_app_id, self.media_position_dict, self.market_price_dict,
+                                            self.impression_price_dict, self.no_impression_price_dict)
+                    evaluate_l[res] = re.result_evaluation(res)
+                    res_l[media_app_id] = res
 
-            for media_app_id in self.media_position_dict.keys():
-                res = pool.apply_async(bandit.do_process,
-                                       args=(media_app_id, media_position_dict_obj, market_price_dict_obj,
-                                             impression_price_dict_obj, no_impression_obj))
-                res_l.append(res)
+            else:
+                pool = Pool(parallel_num)  # 构建进程池
+                res_l = []  # 保存进程返回结果
+                mgr = multiprocessing.Manager()
+                media_position_dict_obj = mgr.dict(self.media_position_dict)
+                market_price_dict_obj = mgr.dict(self.market_price_dict)
+                impression_price_dict_obj = mgr.dict(self.impression_price_dict)
+                no_impression_obj = mgr.dict(self.no_impression_price_dict)
 
-            pool.close()  # 关闭进程池，不再接受请求
-            pool.join()  # 等待所有的子进程结束
+                for media_app_id in self.media_position_dict.keys():
+                    res = pool.apply_async(bandit.do_process,
+                                           args=(media_app_id, media_position_dict_obj, market_price_dict_obj,
+                                                 impression_price_dict_obj, no_impression_obj))
+                    res_l.append(res)
 
-            for res in res_l:
-                self.logging.info(f"res:{res}")
-                self.optimal_ratio_dict.update(res.get())
-
-            pool.close()  # 关闭进程池，不再接受请求
-            pool.join()  # 等待所有的子进程结束
+                pool.close()  # 关闭进程池，不再接受请求
+                pool.join()  # 等待所有的子进程结束
 
             for res in res_l:
                 self.logging.info(f"res:{res}")

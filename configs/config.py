@@ -6,6 +6,7 @@
 # @Software: PyCharm
 
 Environment = "offline"
+Multi_Process = False
 DATA_PATH = './data/bid_shading_2022102100_2022102110.txt'
 TEST_DATA_PATH = './data/bid_shading_2022102111_2022102116.txt'
 
