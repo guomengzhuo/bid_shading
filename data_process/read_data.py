@@ -8,7 +8,7 @@ import json
 
 import numpy as np
 import pandas as pd
-from configs.config import DATA_PATH, INCREASE_RATIO
+from configs.config import DATA_PATH, INCREASE_RATIO, DATA_NUMS_LOWER_BOUND
 
 
 class ReadData(object):
@@ -62,7 +62,7 @@ class ReadData(object):
             .str.cat([data_pd["position_id"].map(str), data_pd["pltv"].map(str)], sep="_")
         # 归一化 + 离散化
         for key, group_pd in data_pd.groupby(["key"]):
-            if len(group_pd) < 100:
+            if len(group_pd) < DATA_NUMS_LOWER_BOUND:
                 continue
             # self.logging.info(f"{key}: data nums: {len(group_pd)}")
 
