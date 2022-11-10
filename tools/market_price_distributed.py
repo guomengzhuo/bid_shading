@@ -37,3 +37,28 @@ class Distributed_Image(object):
 
         plt.show()
 
+    def true_history_win_rate(self, imp_count_map, chosen_count_map):
+        win_rate = {
+            i: imp_count_map[i] / chosen_count_map[i] for i in imp_count_map.keys()
+        }
+
+        fig = plt.figure(dpi=300)
+        plt.scatter(win_rate.keys(), win_rate.values(), s=10)
+
+        plt.show()
+
+    def true_pred_win_rate(self, pred_imp_count_map, pred_chosen_count_map, true_imp_count_map, true_chosen_count_map):
+        pred_win_rate = {
+            i: pred_imp_count_map[i] / pred_chosen_count_map[i] for i in pred_imp_count_map.keys()
+        }
+
+        true_win_rate = {
+            i: true_imp_count_map[i] / true_chosen_count_map[i] for i in true_imp_count_map.keys()
+        }
+
+        fig = plt.figure(dpi=300)
+        plt.scatter(pred_win_rate.keys(), pred_win_rate.values(), c='r', s=5, label="pred")
+        plt.scatter(true_win_rate.keys(), true_win_rate.values(), c='blue', s=5, alpha=0.5, label='true')
+        plt.legend()
+        plt.show()
+

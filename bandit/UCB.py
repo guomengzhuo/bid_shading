@@ -11,6 +11,7 @@ import multiprocessing
 import numpy as np
 from configs.config import PLTV_LEVEL, max_search_num, ratio_step, Environment
 from tools.market_price_distributed import Distributed_Image
+import copy
 
 if Environment == "offline":
     logging.basicConfig(
@@ -155,6 +156,8 @@ class UCBBandit(object):
         if key not in optimal_ratio_dict:
             optimal_ratio_dict[key] = {}
 
+        # todo(@mfishzhang): 修改
+        # ecpm_list = np.arange(lower_bound, upper_bound, step)
         ecpm_list = np.arange(lower_bound, upper_bound, step)
         adjust_ratio = []
         for price in ecpm_list:
@@ -267,12 +270,15 @@ class UCBBandit(object):
         e-e探索：UCB方式
         """
         Dis_Image = Distributed_Image(logging)
-        right_range = max(abs(impression_price_list[-1] - market_price_value), 1)
-        left_range = max(abs(market_price_value - impression_price_list[0]), 1)
+        # right_range = max(abs(impression_price_list[-1] - market_price_value), 1)
+        # left_range = max(abs(market_price_value - impression_price_list[0]), 1)
         # 步骤1：初始化
         chosen_count_map, imp_count_map, estimared_rewards_map = self.bandit_init(impression_price_list,
                                                                                   no_impression_price_list,
                                                                                   market_price_value)
+
+        true_chosen_count_map = copy.deepcopy(chosen_count_map)
+        true_imp_count_map = copy.deepcopy(imp_count_map)
 
         # 步骤2：选top
         chosen_key_set = list(chosen_count_map.keys())
@@ -288,17 +294,16 @@ class UCBBandit(object):
         # 步骤3： bandit 计算
         sampling_imp_count = {}
         total_count = sum(chosen_count_map.values())
-        old_chosen_count_map = chosen_count_map
         sampling_chosen_count_map = {}
         cal_num = min(len(imp_count_map) * 10, 5000)
         for sampling_freq in range(1, cal_num):
             max_upper_bound_probs = 0.0
             max_probs_key = 0
-            total_count += sum(sampling_imp_count.values())
+            total_count += sum(sampling_chosen_count_map.values())
             # 步骤3：1、select arms
             for k in chosen_key_set:
                 # TODO 加入beta期望、方差
-                sampling_count = old_chosen_count_map[k]
+                sampling_count = true_chosen_count_map[k]
                 if k in sampling_chosen_count_map:
                     sampling_count += sampling_chosen_count_map[k]
 
@@ -402,7 +407,8 @@ class UCBBandit(object):
                 market_price_score = value
                 market_price = price
 
-        Dis_Image.win_rate_image(market_price_value, imp_count_map, chosen_count_map, impression_price_list[0])
+        # Dis_Image.win_rate_image(market_price_value, imp_count_map, chosen_count_map, impression_price_list[0])
+        Dis_Image.true_pred_win_rate(imp_count_map, chosen_count_map, true_imp_count_map, true_chosen_count_map)
 
         return market_price, chosen_count_map, imp_count_map
 
