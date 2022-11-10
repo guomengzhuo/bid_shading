@@ -47,7 +47,8 @@ class Distributed_Image(object):
 
         plt.show()
 
-    def true_pred_win_rate(self, pred_imp_count_map, pred_chosen_count_map, true_imp_count_map, true_chosen_count_map):
+    def true_pred_win_rate(self, pred_imp_count_map, pred_chosen_count_map, true_imp_count_map, true_chosen_count_map,
+                           market_price_value, min_imp_price):
         pred_win_rate = {
             i: pred_imp_count_map[i] / pred_chosen_count_map[i] for i in pred_imp_count_map.keys()
         }
@@ -56,9 +57,19 @@ class Distributed_Image(object):
             i: true_imp_count_map[i] / true_chosen_count_map[i] for i in true_imp_count_map.keys()
         }
 
+        for i in pred_win_rate.keys():
+            if i >= market_price_value:
+                _market_price_value = i
+                break
         fig = plt.figure(dpi=300)
+        # plt.title("{} distribution of game {}, date {}, user type{}".format())
         plt.scatter(pred_win_rate.keys(), pred_win_rate.values(), c='r', s=5, label="pred")
         plt.scatter(true_win_rate.keys(), true_win_rate.values(), c='blue', s=5, alpha=0.5, label='true')
+
+        plt.scatter(_market_price_value, pred_win_rate[_market_price_value], c="green", marker="^")
+        if min_imp_price in pred_win_rate:
+            plt.scatter(min_imp_price, pred_win_rate[min_imp_price], c="green", marker="*")
+
         plt.legend()
         plt.show()
 
