@@ -81,8 +81,7 @@ class ReadData(object):
             group_pd["interval"] = pd.qcut(group_pd["norm_ecpm"], q=100)
             group_pd["interval_index"] = pd.qcut(group_pd["norm_ecpm"], q=100, labels=False)
             group_pd["bins"] = json.dumps(list(bins))
-            data_pd = pd.merge(data_pd, group_pd, how="left")
-
+            
             norm_pd_list.append(group_pd)
 
         data_pd = pd.concat(norm_pd_list)
