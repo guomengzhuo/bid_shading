@@ -162,25 +162,23 @@ class UCBBandit(object):
         # ecpm_list = np.arange(lower_bound, upper_bound, step)
         ecpm_list = np.arange(lower_bound, upper_bound, step)
         adjust_ratio = []
+        gain_list = []
         for price in ecpm_list:
             if price <= market_price:
                 adjust_ratio.append(1.0)
             else:
                 assert upper_bound - market_price > 0
-
-                y = search_price_for_optimal_cost(price, chosen_count_map, imp_count_map)
-
-                if y == 0:
-                    y = ((price - market_price) * (market_price * 1.5 - market_price) /
-                         (upper_bound - market_price) + market_price) / price
-
-                y = max(y, (0.9 * market_price) / price)  # 设置调价下限
+                y, gain = search_price_for_optimal_cost(price, market_price, upper_bound, chosen_count_map,
+                                                        imp_count_map)
                 adjust_ratio.append(y)
+                gain_list.append(gain)
 
-        optimal_ratio_dict[key]['adjust_ratio_list'] = adjust_ratio
+        # optimal_ratio_dict[key]['adjust_ratio_list'] = adjust_ratio
         optimal_ratio_dict[key]['upper_bound'] = upper_bound
         optimal_ratio_dict[key]['lower_bound'] = lower_bound
         optimal_ratio_dict[key]['step'] = step
+        optimal_ratio_dict[key]['income'] = sum(gain_list)
+        logging.info(f"key:{key}, income:{sum(gain_list)}")
 
     def calculate_delta(self, total_count, k_chosen_count):
         # total_count->目前的试验次数，k_chosen_count->是这个臂被试次数
