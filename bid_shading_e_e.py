@@ -16,6 +16,7 @@ from data_process.read_data import ReadData
 from data_process.result_evaluate import ResultEvaluate
 from configs.config import DATA_PATH, TEST_DATA_PATH
 from configs.config import PLTV_LEVEL, parallel_num, Environment, Multi_Process
+# from bandit.UCB_v0 import UCBBandit
 from bandit.UCB import UCBBandit
 import logging
 import numpy as np

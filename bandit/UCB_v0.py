@@ -11,6 +11,7 @@ import multiprocessing
 import numpy as np
 from configs.config import PLTV_LEVEL, max_search_num, ratio_step, Environment
 from tools.market_price_distributed import Distributed_Image
+from search.search_optimal_price import search_price_for_optimal_cost
 import copy
 
 if Environment == "offline":
@@ -166,7 +167,7 @@ class UCBBandit(object):
             else:
                 assert upper_bound - market_price > 0
 
-                y = self.search_optimal_price(price, chosen_count_map, imp_count_map)
+                y = search_price_for_optimal_cost(price, chosen_count_map, imp_count_map)
 
                 if y == 0:
                     y = ((price - market_price) * (market_price * 1.5 - market_price) /
@@ -179,24 +180,6 @@ class UCBBandit(object):
         optimal_ratio_dict[key]['upper_bound'] = upper_bound
         optimal_ratio_dict[key]['lower_bound'] = lower_bound
         optimal_ratio_dict[key]['step'] = step
-
-    def search_optimal_price(self, ecpm, chosen_count_map, imp_count_map):
-        ratio = 0
-        gain = 0
-
-        for price, chosen_count in chosen_count_map.items():
-            if chosen_count < 1 or ecpm not in imp_count_map:
-                continue
-
-            imp_count = imp_count_map[ecpm]
-
-            # 最大化 impression_rate * (ecpm - price)
-            expect_gain = (imp_count * 1.0 / chosen_count) * (ecpm - price)
-            if expect_gain > gain:
-                gain = expect_gain
-                ratio = price * 1.0 / ecpm
-
-        return ratio
 
     def calculate_delta(self, total_count, k_chosen_count):
         # total_count->目前的试验次数，k_chosen_count->是这个臂被试次数
