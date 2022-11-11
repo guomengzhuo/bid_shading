@@ -53,9 +53,18 @@ class Distributed_Image(object):
             i: pred_imp_count_map[i] / pred_chosen_count_map[i] for i in pred_imp_count_map.keys()
         }
 
-        true_win_rate = {
-            i: true_imp_count_map[i] / true_chosen_count_map[i] for i in true_imp_count_map.keys()
-        }
+        true_win_rate = {}
+        acc_imp = 0
+        acc_response = sum(true_chosen_count_map.values())
+        for i in sorted(true_chosen_count_map.keys()):
+            if i not in true_imp_count_map:
+                true_win_rate[i] = acc_imp / (
+                            acc_imp + true_chosen_count_map[i] + acc_response)
+                acc_response -= true_chosen_count_map[i]
+                continue
+            true_win_rate[i] = (acc_imp + true_imp_count_map[i]) / (acc_imp + true_chosen_count_map[i] + acc_response)
+            acc_imp += true_imp_count_map[i]
+            acc_response -= true_chosen_count_map[i]
 
         for i in pred_win_rate.keys():
             if i >= market_price_value:

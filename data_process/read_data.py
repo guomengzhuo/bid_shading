@@ -60,6 +60,7 @@ class ReadData(object):
 
         data_pd["key"] = data_pd["media_app_id"].map(str)\
             .str.cat([data_pd["position_id"].map(str), data_pd["pltv"].map(str)], sep="_")
+        norm_pd_list = []
         # 归一化 + 离散化
         for key, group_pd in data_pd.groupby(["key"]):
             if len(group_pd) < DATA_NUMS_LOWER_BOUND:
@@ -73,19 +74,19 @@ class ReadData(object):
             group_pd["norm_ecpm"] = (group_pd["response_ecpm"] - group_pd["norm_min"]) \
                                     / (group_pd["norm_max"] - group_pd["norm_min"])
 
-            data_pd.loc[data_pd["key"] == key, "norm_min"] = group_pd["norm_min"]
-            data_pd.loc[data_pd["key"] == key, "norm_max"] = group_pd["norm_max"]
-            data_pd.loc[data_pd["key"] == key, "norm_ecpm"] = group_pd["norm_ecpm"]
-
             # 离散化
             bins = pd.qcut(group_pd["norm_ecpm"], q=100, retbins=True)[1]
             bins[0] = 0
 
-            data_pd.loc[data_pd["key"] == key, "interval"] = pd.qcut(group_pd["norm_ecpm"], q=100)
-            data_pd.loc[data_pd["key"] == key, "interval_index"] = pd.qcut(group_pd["norm_ecpm"], q=100, labels=False)
-            data_pd.loc[data_pd["key"] == key, "bins"] = json.dumps(list(bins))
+            group_pd["interval"] = pd.qcut(group_pd["norm_ecpm"], q=100)
+            group_pd["interval_index"] = pd.qcut(group_pd["norm_ecpm"], q=100, labels=False)
+            group_pd["bins"] = json.dumps(list(bins))
+            data_pd = pd.merge(data_pd, group_pd, how="left")
 
-        data_pd = data_pd.dropna()
+            norm_pd_list.append(group_pd)
+
+        data_pd = pd.concat(norm_pd_list)
+        # data_pd = data_pd.dropna()
         # 将 win_price 和 winner_bid_price 也归一化
         data_pd["win_price"] = (data_pd["win_price"] - data_pd["norm_min"]) / (data_pd["norm_max"] - data_pd["norm_min"])
         data_pd["winner_bid_price"] = (data_pd["winner_bid_price"] - data_pd["norm_min"]) / (data_pd["norm_max"] - data_pd["norm_min"])

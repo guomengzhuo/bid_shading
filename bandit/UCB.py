@@ -339,7 +339,7 @@ class UCBBandit(object):
                 # np.random.randn(1)[0] -> 改为基于历史数据的采样
                 # beta 先验  float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
                 sample_rate = np.random.beta(imp_count_map[max_probs_key],
-                                             chosen_count_map[max_probs_key] - imp_count_map[max_probs_key])
+                                             max(chosen_count_map[max_probs_key] - imp_count_map[max_probs_key], 1))
                 is_win = np.random.binomial(1, sample_rate)
                 index = price_list.index(max_probs_key)
 
