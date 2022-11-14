@@ -168,7 +168,7 @@ class UCBBandit(object):
                 adjust_ratio.append(1.0)
             else:
                 assert upper_bound - market_price > 0
-                y, gain = search_price_for_optimal_cost(price, market_price, upper_bound, chosen_count_map,
+                y, gain = search_price_for_optimal_cost(logging, price, market_price, upper_bound, chosen_count_map,
                                                         imp_count_map)
                 adjust_ratio.append(y)
                 gain_list.append(gain)

@@ -6,7 +6,7 @@
 # @Software: PyCharm
 
 
-def search_price_for_optimal_cost(ecpm, market_price, upper_bound, chosen_count_map, imp_count_map):
+def search_price_for_optimal_cost(logging, ecpm, market_price, upper_bound, chosen_count_map, imp_count_map):
     ratio = 1.0
     gain = 0
 
@@ -29,8 +29,7 @@ def search_price_for_optimal_cost(ecpm, market_price, upper_bound, chosen_count_
 
     gain = max(0, price * (1 - ratio))
 
-    # print(f"market_price:{market_price}, ecpm:{ecpm}, ratio:{ratio}, gain:{gain}, upper_bound:{upper_bound}")
-
+    logging.info(f"market_price:{market_price}, ecpm:{ecpm}, ratio:{ratio}, gain:{gain}, upper_bound:{upper_bound}")
     return ratio, gain
 
 

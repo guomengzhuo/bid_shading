@@ -10,6 +10,7 @@ import pandas as pd
 from configs.config import TEST_DATA_PATH
 from data_process.read_data import ReadData
 
+
 class ResultEvaluate(object):
     """
     # 数据读取主类

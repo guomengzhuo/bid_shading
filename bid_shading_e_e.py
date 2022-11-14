@@ -71,14 +71,12 @@ class BidShading(object):
 
         # 2、获取media、position映射关系
         for media_id, position_info in self.market_price_dict.items():
-
             if media_id not in self.media_position_dict:
                 self.media_position_dict[media_id] = set(position_info.keys())
             else:
                 self.media_position_dict[media_id] = self.media_position_dict[media_id] | set(position_info.keys())
 
         for media_id, position_info in self.impression_price_dict.items():
-
             if media_id not in self.media_position_dict:
                 self.media_position_dict[media_id] = set(position_info.keys())
             else:
@@ -136,11 +134,13 @@ class BidShading(object):
                 self.logging.info(f"res:{res}")
                 self.optimal_ratio_dict.update(res.get())
         else:
+            evaluate_l = {}
             for media_app_id in self.media_position_dict.keys():
                 tmp_optimal_ratio_dict = bandit.do_process(media_app_id, self.media_position_dict,
                                                            self.market_price_dict,
                                                            self.impression_price_dict,
                                                            self.no_impression_price_dict)
+                evaluate_l[media_app_id] = re.result_evaluation(tmp_optimal_ratio_dict)
                 self.optimal_ratio_dict.update(tmp_optimal_ratio_dict)
 
         self.logging.info(f"run -> end len(optimal_ratio_dict):{len(self.optimal_ratio_dict)}")
