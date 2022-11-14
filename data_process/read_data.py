@@ -89,10 +89,15 @@ class ReadData(object):
         # 将 win_price 和 winner_bid_price 也归一化
         data_pd["win_price"] = (data_pd["win_price"] - data_pd["norm_min"]) / (data_pd["norm_max"] - data_pd["norm_min"])
         data_pd["winner_bid_price"] = (data_pd["winner_bid_price"] - data_pd["norm_min"]) / (data_pd["norm_max"] - data_pd["norm_min"])
+        # 保存ecpm和离散化的信息
+        ecpm_norm_dict = {}
+        for response_ecpm, interval in zip(data_pd["response_ecpm"], data_pd["interval"].map(lambda x: x.right)):
+            ecpm_norm_dict[interval] = response_ecpm
+        self.logging.info(f"ecpm_norm_dict:{ecpm_norm_dict}")
         # 直接用离散化的右边界替换原来的ecpm
         data_pd["response_ecpm"] = data_pd["interval"].map(lambda x: x.right)
         data_pd["interval_index"] = data_pd["interval_index"].map(int)
-        return data_pd
+        return data_pd, ecpm_norm_dict
 
     def get_data_dict_struct(self, data_pd, is_imp=True):
         response_dict = {}
@@ -134,7 +139,7 @@ class ReadData(object):
         # 1、获取本地数据
         data_pd = self.read_csv_data()
         data_pd = self.data_filter(data_pd)
-        data_pd = self.data_discret_norm(data_pd)
+        data_pd, ecpm_norm_dict = self.data_discret_norm(data_pd)
 
         # 2、获取response_dict
         imp_dict = self.get_data_dict_struct(data_pd[data_pd['win_price'] > 0], True)
@@ -175,7 +180,7 @@ class ReadData(object):
 
         self.logging.info(f"len imp_dict:{len(imp_dict)},  len no_imp_dict:{len(no_imp_dict)}, "
                           f"len market_price_dict:{len(market_price_dict)}")
-        return market_price_dict, imp_dict, no_imp_dict, norm_dict
+        return market_price_dict, imp_dict, no_imp_dict, norm_dict, ecpm_norm_dict
 
     def test_data_process(self):
         """

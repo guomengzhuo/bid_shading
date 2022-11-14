@@ -41,7 +41,7 @@ class UCBBandit(object):
         """
 
     def calculate_market_price(self, media_app_id, position_id, market_price_dict,
-                               impression_price_dict, no_impression_price, optimal_ratio_dict):
+                               impression_price_dict, no_impression_price, ecpm_norm_dict, optimal_ratio_dict):
         """
         计算市场价格
         :params market_price_dict = {pltv:value}
@@ -86,7 +86,7 @@ class UCBBandit(object):
 
             # 设置市场价格调整比例
             self.get_adjust_ratio(media_app_id, position_id, level, impression_price_list,
-                                  market_price, chosen_count_map, imp_count_map, optimal_ratio_dict)
+                                  market_price, chosen_count_map, imp_count_map, ecpm_norm_dict, optimal_ratio_dict)
 
         # """计算position默认值 """
         market_price_value = -1.0
@@ -133,12 +133,12 @@ class UCBBandit(object):
 
             # 设置市场价格调整比例
             self.get_adjust_ratio(media_app_id, position_id, -1, impression_price_list,
-                                  market_price, chosen_count_map, imp_count_map, optimal_ratio_dict)
+                                  market_price, chosen_count_map, imp_count_map, ecpm_norm_dict, optimal_ratio_dict)
 
         return optimal_ratio_dict
 
     def get_adjust_ratio(self, media_app_id, position_id, level, impression_price_list,
-                         market_price, chosen_count_map, imp_count_map, optimal_ratio_dict):
+                         market_price, chosen_count_map, imp_count_map, ecpm_norm_dict, optimal_ratio_dict):
         """
         设置市场价格调整比例
         """
@@ -168,7 +168,7 @@ class UCBBandit(object):
             else:
                 assert upper_bound - market_price > 0
                 y, gain = search_price_for_optimal_cost(price, market_price, upper_bound, chosen_count_map,
-                                                        imp_count_map)
+                                                        imp_count_map, ecpm_norm_dict)
                 adjust_ratio.append(y)
                 gain_list.append(gain)
 
@@ -394,7 +394,7 @@ class UCBBandit(object):
         return market_price, chosen_count_map, imp_count_map
 
     def do_process(self, media_app_id, media_position_dict_obj, market_price_dict_obj, impression_price_dict_obj,
-                   no_impression_obj):
+                   no_impression_obj, ecpm_norm_dict):
         """
         根据读取的数据，计算bid shading系数，输出至redis
         :return:
@@ -436,6 +436,6 @@ class UCBBandit(object):
                 continue
 
             self.calculate_market_price(media_app_id, position_id, market_price, impression_price,
-                                        no_impression_price, optimal_ratio_dict)
+                                        no_impression_price, ecpm_norm_dict, optimal_ratio_dict)
 
         return optimal_ratio_dict

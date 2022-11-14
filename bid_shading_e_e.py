@@ -54,6 +54,8 @@ class BidShading(object):
         self.impression_price_dict = {}
         self.media_position_dict = {}
         self.no_impression_price_dict = {}
+        self.norm_dict = {}
+        self.ecpm_norm_dict = {}
 
         self.optimal_ratio_dict = {}
 
@@ -64,7 +66,7 @@ class BidShading(object):
         # market_price_dict = media_app_id:position_id:pltv - value
         # impression_price_dict = media_app_id:position_id:pltv - value_list
         self.market_price_dict, self.impression_price_dict, self.no_impression_price_dict,\
-            self.norm_dict = rd.data_process()
+            self.norm_dict, self.ecpm_norm_dict = rd.data_process()
 
         self.logging.info(f"len market_price_dict:{len(self.market_price_dict)}, "
                           f"len impression_price_dict:{len(self.impression_price_dict)}")
@@ -107,7 +109,7 @@ class BidShading(object):
             evaluate_l = {}
             for media_app_id in self.media_position_dict.keys():
                 res = bandit.do_process(media_app_id, self.media_position_dict, self.market_price_dict,
-                                        self.impression_price_dict, self.no_impression_price_dict)
+                                        self.impression_price_dict, self.no_impression_price_dict, self.ecpm_norm_dict)
                 res_l[media_app_id] = res
                 self.optimal_ratio_dict.update(res)  # 保存进程返回结果
             # evaluate_l = re.result_evaluation(res_l)  # TODO 评估方法待确定
@@ -119,11 +121,12 @@ class BidShading(object):
             market_price_dict_obj = mgr.dict(self.market_price_dict)
             impression_price_dict_obj = mgr.dict(self.impression_price_dict)
             no_impression_obj = mgr.dict(self.no_impression_price_dict)
+            ecpm_norm_dict = mgr.dict(self.ecpm_norm_dict)
 
             for media_app_id in self.media_position_dict.keys():
                 res = pool.apply_async(bandit.do_process,
                                        args=(media_app_id, media_position_dict_obj, market_price_dict_obj,
-                                             impression_price_dict_obj, no_impression_obj))
+                                             impression_price_dict_obj, no_impression_obj, ecpm_norm_dict))
                 res_l.append(res)
 
             pool.close()  # 关闭进程池，不再接受请求

@@ -27,7 +27,7 @@ max_search_num = 200000
 max_sampling_freq = 1000
 
 # 存在redis的步长
-ratio_step = 0.01
+ratio_step = 10
 
 # 每个media - postion - pltv下最小的数据条数
 DATA_NUMS_LOWER_BOUND = 1000
