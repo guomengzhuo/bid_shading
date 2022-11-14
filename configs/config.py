@@ -23,6 +23,9 @@ parallel_num = 6
 # 最大搜索数量
 max_search_num = 200000
 
+# 最大迭代次数
+max_sampling_freq = 1000
+
 # 存在redis的步长
 ratio_step = 0.01
 
