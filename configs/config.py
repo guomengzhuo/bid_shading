@@ -24,7 +24,10 @@ parallel_num = 6
 max_search_num = 200000
 
 # 最大迭代次数
-max_sampling_freq = 1000
+max_sampling_freq = 1e7
+
+# 迭代次数与历史数据的比例
+sample_ratio = 10
 
 # 存在redis的步长
 ratio_step = 10

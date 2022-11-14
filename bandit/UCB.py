@@ -9,7 +9,7 @@ import logging
 import math
 import multiprocessing
 import numpy as np
-from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, ratio_step, Environment
+from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, sample_ratio, ratio_step, Environment
 from tools.market_price_distributed import Distributed_Image
 
 from search.get_adjust_ratio import get_adjust_ratio
@@ -249,8 +249,8 @@ class UCBBandit(object):
         sampling_imp_count = defaultdict(int)
         sampling_chosen_count_map = {}
 
-        # cal_num = min(len(imp_count_map) * 10, 5000)
-        for sampling_freq in range(1, max_sampling_freq):
+        cal_num = min(true_total_chosen_count * sample_ratio, max_sampling_freq)
+        for sampling_freq in range(1, cal_num):
             max_upper_bound_probs = 0.0
             max_probs_key = 0
             total_count = sum(sampling_chosen_count_map.values())
@@ -290,7 +290,7 @@ class UCBBandit(object):
 
             min_market_price = max_probs_key
             # 步骤3：2、update
-            if max_probs_key in imp_count_map and max_probs_key in imp_count_map:
+            if max_probs_key in imp_count_map:
                 # np.random.randn(1)[0] -> 改为基于历史数据的采样
                 # beta 先验  float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
                 sample_rate = np.random.beta(imp_count_map[max_probs_key],
@@ -345,7 +345,7 @@ class UCBBandit(object):
                     if x >= min_market_price:
                         if x not in imp_count_map.keys():
                             imp_count_map[x] = 0
-                        imp_count_map[x] += 1
+                        imp_count_map[x] += 1 # if x == max_probs_key else 0.1
 
                         weight = self.calculate_reward_weigt_quadratic(x, min_market_price)
                         estimared_rewards_map[x] += 1 * weight
