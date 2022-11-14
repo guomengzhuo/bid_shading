@@ -172,7 +172,7 @@ class UCBBandit(object):
                 adjust_ratio.append(y)
                 gain_list.append(gain)
 
-        # optimal_ratio_dict[key]['adjust_ratio_list'] = adjust_ratio
+        optimal_ratio_dict[key]['adjust_ratio_list'] = adjust_ratio
         optimal_ratio_dict[key]['upper_bound'] = upper_bound
         optimal_ratio_dict[key]['lower_bound'] = lower_bound
         optimal_ratio_dict[key]['step'] = step
