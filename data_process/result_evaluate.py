@@ -28,6 +28,8 @@ class ResultEvaluate(object):
         # 读取测试数据集
         test_dataset = self.test_dataset
         evaluation = {}
+        self.logging.info(f"result.keys():{result.keys()}\n"
+                          f"test_dataset:{test_dataset.head(100)}")
         for media_app_id in result.keys():
             res = result[media_app_id]
             evaluation[media_app_id] = {}
@@ -64,7 +66,10 @@ class ResultEvaluate(object):
                     [test_pd["shading_ecpm"]], default=0)
 
                 # 竞得率 & cpm
-                win_rate_before = len(test_pd[test_pd["label_before"] > 0]) / len(test_pd["label_before"])
+                win_rate_before = 1.0
+                if len(test_pd["label_before"]) != 0:
+                    win_rate_before = len(test_pd[test_pd["label_before"] > 0]) / len(test_pd["label_before"])
+
                 cpm_before = sum(test_pd["label_before"]) / len(test_pd[test_pd["label_before"] > 0])
 
                 win_rate_increase = len(test_pd[test_pd["label_increase"] > 0]) / len(test_pd["label_increase"])
@@ -77,9 +82,12 @@ class ResultEvaluate(object):
                                   f"win rate before: {win_rate_before}, cpm before: {cpm_before} \n"
                                   f"win rate increase: {win_rate_increase}, cpm after: {cpm_increase} \n"
                                   f"win rate after: {win_rate_after}, cpm after: {cpm_after}")
+
                 evaluation[media_app_id][key] = {
                     "win_rate_before"
                 }
+
+        return evaluation
 
 
 if __name__ == '__main__':
