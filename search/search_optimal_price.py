@@ -23,6 +23,7 @@ def search_price_for_optimal_cost(ecpm, market_price, upper_bound, chosen_count_
             ratio = price * 1.0 / ecpm
 
     if ratio == 1.0:
+        # 等比例缩小
         ratio = ((price - market_price) * (market_price * 1.5 - market_price) /
                  (upper_bound - market_price) + market_price) / price
 
@@ -43,10 +44,10 @@ def search_price_for_optimal_roi(ecpm, chosen_count_map, imp_count_map):
 
         imp_count = imp_count_map[ecpm]
 
-        # 最大化 impression_rate * (ecpm - price)
-        expect_gain = (imp_count * 1.0 / chosen_count) * (ecpm - price)
+        # 最大化 impression_rate * (E(GMV) / price)
+        expect_gain = (imp_count * 1.0 / chosen_count) * (ecpm / price)
         if expect_gain > gain:
             gain = expect_gain
             ratio = price * 1.0 / ecpm
 
-    return ratio
+    return ratio, gain
