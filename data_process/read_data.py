@@ -8,7 +8,7 @@ import json
 
 import numpy as np
 import pandas as pd
-from configs.config import DATA_PATH, INCREASE_RATIO, DATA_NUMS_LOWER_BOUND
+from configs.config import DATA_PATH, INCREASE_RATIO, DATA_NUMS_LOWER_BOUND, No_pltv
 
 
 class ReadData(object):
@@ -57,9 +57,12 @@ class ReadData(object):
 
     def data_discret_norm(self, data_pd):
         data_pd = data_pd.copy()
-
-        data_pd["key"] = data_pd["media_app_id"].map(str)\
-            .str.cat([data_pd["position_id"].map(str), data_pd["pltv"].map(str)], sep="_")
+        if No_pltv:
+            data_pd["key"] = data_pd["media_app_id"].map(str) \
+                .str.cat([data_pd["position_id"].map(str)], sep="_")
+        else:
+            data_pd["key"] = data_pd["media_app_id"].map(str)\
+                .str.cat([data_pd["position_id"].map(str), data_pd["pltv"].map(str)], sep="_")
         norm_pd_list = []
         # 归一化 + 离散化
         for key, group_pd in data_pd.groupby(["key"]):
@@ -128,6 +131,29 @@ class ReadData(object):
 
         return response_dict
 
+    def get_data_dict_struct_no_pltv(self, data_pd, is_imp=True):
+        response_dict = {}
+        for index, row in data_pd.iterrows():
+            # self.logging.info(f"index:{index}, row:{row}")
+            media_app_id = int(row["media_app_id"])
+            position_id = int(row["position_id"])
+            value = float(row["response_ecpm"])
+            # value = float(row["interval_index"])
+            # if is_imp:
+            #     value = float(row["win_price"])
+
+            if media_app_id not in response_dict:
+                response_dict[media_app_id] = {}
+
+            position_dict = response_dict[media_app_id]
+            if position_id not in position_dict:
+                position_dict[position_id] = []
+
+            position_dict[position_id].append(value)
+            response_dict[media_app_id] = position_dict
+
+        return response_dict
+
     def data_process(self):
         """
         main function
@@ -142,41 +168,65 @@ class ReadData(object):
         data_pd, ecpm_norm_dict = self.data_discret_norm(data_pd)
 
         # 2、获取response_dict
-        imp_dict = self.get_data_dict_struct(data_pd[data_pd['win_price'] > 0], True)
-        no_imp_dict = self.get_data_dict_struct(data_pd[data_pd['win_price'] == 0], False)
+        if No_pltv:
+            imp_dict = self.get_data_dict_struct_no_pltv(data_pd[data_pd['win_price'] > 0], True)
+            no_imp_dict = self.get_data_dict_struct_no_pltv(data_pd[data_pd['win_price'] == 0], False)
+        else:
+            imp_dict = self.get_data_dict_struct(data_pd[data_pd['win_price'] > 0], True)
+            no_imp_dict = self.get_data_dict_struct(data_pd[data_pd['win_price'] == 0], False)
 
         # 3、获取中位数
         for media_app_id, position_info in imp_dict.items():
             if media_app_id not in market_price_dict:
                 market_price_dict[media_app_id] = {}
 
-            position_dict = market_price_dict[media_app_id]
-            for position_id, pltv_info in position_info.items():
+            if No_pltv:
+                position_dict = market_price_dict[media_app_id]
+                for position_id, value_list in position_info.items():
+                    position_dict[position_id] =  np.median(np.array(value_list))
 
-                if position_id not in position_dict:
-                    position_dict[position_id] = {}
+                market_price_dict[media_app_id] = position_dict
+            else:
+                position_dict = market_price_dict[media_app_id]
+                for position_id, pltv_info in position_info.items():
 
-                pltv_dict = position_dict[position_id]
-                for pltv, win_price_list in pltv_info.items():
-                    pltv_dict[pltv] = np.median(np.array(win_price_list))
+                    if position_id not in position_dict:
+                        position_dict[position_id] = {}
 
-                position_dict[position_id] = pltv_dict
-            market_price_dict[media_app_id] = position_dict
+                    pltv_dict = position_dict[position_id]
+                    for pltv, win_price_list in pltv_info.items():
+                        pltv_dict[pltv] = np.median(np.array(win_price_list))
+
+                    position_dict[position_id] = pltv_dict
+
+                market_price_dict[media_app_id] = position_dict
 
         # 4、获取其他需要回传的数据
-        for key, group_pd in data_pd.groupby(["key"]):
-            [media_app_id, position_id, pltv] = map(int, key.split("_"))
-            write_line = group_pd.iloc[0]
-            if media_app_id not in norm_dict:
-                norm_dict[media_app_id] = {}
-            if position_id not in norm_dict[media_app_id]:
-                norm_dict[media_app_id][position_id] = {}
+        if No_pltv:
+            for key, group_pd in data_pd.groupby(["key"]):
+                [media_app_id, position_id] = map(int, key.split("_"))
+                write_line = group_pd.iloc[0]
+                if media_app_id not in norm_dict:
+                    norm_dict[media_app_id] = {}
+                norm_dict[media_app_id][position_id]= {
+                    "norm_min": write_line["norm_min"],
+                    "norm_max": write_line["norm_max"],
+                    "bins": write_line["bins"]
+                }
+        else:
+            for key, group_pd in data_pd.groupby(["key"]):
+                [media_app_id, position_id, pltv] = map(int, key.split("_"))
+                write_line = group_pd.iloc[0]
+                if media_app_id not in norm_dict:
+                    norm_dict[media_app_id] = {}
+                if position_id not in norm_dict[media_app_id]:
+                    norm_dict[media_app_id][position_id] = {}
 
-            norm_dict[media_app_id][position_id][pltv] = {
-                "norm_min": write_line["norm_min"],
-                "norm_max": write_line["norm_max"],
-                "bins": write_line["bins"]
-            }
+                norm_dict[media_app_id][position_id][pltv] = {
+                    "norm_min": write_line["norm_min"],
+                    "norm_max": write_line["norm_max"],
+                    "bins": write_line["bins"]
+                }
 
         self.logging.info(f"len imp_dict:{len(imp_dict)},  len no_imp_dict:{len(no_imp_dict)}, "
                           f"len market_price_dict:{len(market_price_dict)}")
@@ -192,10 +242,16 @@ class ReadData(object):
         # todo(@mfishzhang) 测试集是否需要过滤95分位数
         data_pd_test = self.data_filter(data_pd_test)
 
-        data_pd_test["key"] = data_pd_test["media_app_id"].map(str)\
-            .str.cat([data_pd_test["position_id"].map(str), data_pd_test["pltv"].map(str)], sep="_")
-        data_pd_test["target_price"] = data_pd_test[["win_price", "winner_bid_price"]].T.max()
-        data_pd_test["virtual_ecpm"] = data_pd_test["response_ecpm"] * INCREASE_RATIO
+        if No_pltv:
+            data_pd_test["key"] = data_pd_test["media_app_id"].map(str) \
+                .str.cat([data_pd_test["position_id"].map(str)], sep="_")
+            data_pd_test["target_price"] = data_pd_test[["win_price", "winner_bid_price"]].T.max()
+            data_pd_test["virtual_ecpm"] = data_pd_test["response_ecpm"] * INCREASE_RATIO
+        else:
+            data_pd_test["key"] = data_pd_test["media_app_id"].map(str)\
+                .str.cat([data_pd_test["position_id"].map(str), data_pd_test["pltv"].map(str)], sep="_")
+            data_pd_test["target_price"] = data_pd_test[["win_price", "winner_bid_price"]].T.max()
+            data_pd_test["virtual_ecpm"] = data_pd_test["response_ecpm"] * INCREASE_RATIO
 
         return data_pd_test[["key", "response_ecpm", "target_price", "virtual_ecpm"]]
 

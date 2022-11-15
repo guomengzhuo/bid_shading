@@ -5,7 +5,6 @@
 # @File    : bid_shading_e_e.py
 # @Software: PyCharm
 
-
 import os
 
 from multiprocessing import Pool

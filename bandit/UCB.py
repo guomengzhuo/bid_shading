@@ -9,7 +9,7 @@ import logging
 import math
 import multiprocessing
 import numpy as np
-from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, sample_ratio, ratio_step, Environment
+from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, sample_ratio, Environment, No_pltv
 from tools.market_price_distributed import Distributed_Image
 
 from search.get_adjust_ratio import get_adjust_ratio
@@ -51,18 +51,52 @@ class UCBBandit(object):
         :params no_impression_price = {pltv:value_list}  响应未曝光数据
         """
         # """分pltv计算"""
-        for level in PLTV_LEVEL:
-            market_price_value = -1.0
-            impression_price_list = []
-            no_impression_price_list = []
-            if level in market_price_dict:
-                market_price_value = market_price_dict[level]
+        if not No_pltv:
+            for level in PLTV_LEVEL:
+                market_price_value = -1.0
+                impression_price_list = []
+                no_impression_price_list = []
+                if level in market_price_dict:
+                    market_price_value = market_price_dict[level]
 
-            if level in impression_price_dict:
-                impression_price_list = sorted(impression_price_dict[level], reverse=False)
+                if level in impression_price_dict:
+                    impression_price_list = sorted(impression_price_dict[level], reverse=False)
 
-            if level in no_impression_price:
-                no_impression_price_list = sorted(no_impression_price[level], reverse=False)
+                if level in no_impression_price:
+                    no_impression_price_list = sorted(no_impression_price[level], reverse=False)
+
+                if market_price_value == -1.0 or len(impression_price_list) < 100:
+                    # TODO market_price_value 使用的媒体回传数据，要限制大小？
+                    logging.debug(f"proc_id={multiprocessing.current_process().name},"
+                                  f"media_app_id:{media_app_id}, position_id:{position_id}, level:{level},"
+                                  f"len(impression_price_list):{len(impression_price_list)} < 10, data is sparse "
+                                  f"enough to compute")
+                    continue
+
+                # e-e
+                # market_price 市场价格
+                # chosen_count_map = {}  # 记录选择次数
+                # imp_count_map = {}  # 记录曝光次数
+                market_price, chosen_count_map, imp_count_map = self.bandit(market_price_value,
+                                                                            impression_price_list,
+                                                                            no_impression_price_list)
+
+                logging.info(f"proc_id={multiprocessing.current_process().name},"
+                             f"media_app_id:{media_app_id}, position_id:{position_id}, level:{level}, "
+                             f"history_median_price_value:{market_price_value}, market_price:{market_price}，"
+                             f"len impression_price_list:{len(impression_price_list)}, "
+                             f"len no_impression_price_list:{len(no_impression_price_list)}")
+
+                # 设置市场价格调整比例
+                get_adjust_ratio(logging, media_app_id, position_id, level, impression_price_list,
+                                 market_price, chosen_count_map, imp_count_map, ecpm_norm_dict, optimal_ratio_dict)
+        else:
+            # """计算position默认值 """
+            market_price_value = round(np.mean(market_price_dict), 2)
+            impression_price_list = impression_price_dict
+            no_impression_price_list = no_impression_price
+            impression_price_list = sorted(impression_price_list, reverse=False)
+            no_impression_price_list = sorted(no_impression_price_list, reverse=False)
 
             if market_price_value == -1.0 or len(impression_price_list) < 100:
                 # TODO market_price_value 使用的媒体回传数据，要限制大小？
@@ -70,72 +104,24 @@ class UCBBandit(object):
                               f"media_app_id:{media_app_id}, position_id:{position_id}, level:{level},"
                               f"len(impression_price_list):{len(impression_price_list)} < 10, data is sparse "
                               f"enough to compute")
-                continue
+            else:
+                # e-e
+                # market_price 市场价格
+                # chosen_count_map = {}  # 记录选择次数
+                # imp_count_map = {}  # 记录曝光次数
+                market_price, chosen_count_map, imp_count_map = self.bandit(market_price_value,
+                                                                            impression_price_list,
+                                                                            no_impression_price_list)
 
-            # e-e
-            # market_price 市场价格
-            # chosen_count_map = {}  # 记录选择次数
-            # imp_count_map = {}  # 记录曝光次数
-            market_price, chosen_count_map, imp_count_map = self.bandit(market_price_value,
-                                                                        impression_price_list,
-                                                                        no_impression_price_list)
+                logging.info(f"calculate default data proc_id={multiprocessing.current_process().name},"
+                             f"media_app_id:{media_app_id}, position_id:{position_id},"
+                             f"history_median_price_value:{market_price_value}, market_price:{market_price}，"
+                             f"len impression_price_list:{len(impression_price_list)}, "
+                             f"len no_impression_price_list:{len(no_impression_price_list)}")
 
-            logging.info(f"proc_id={multiprocessing.current_process().name},"
-                         f"media_app_id:{media_app_id}, position_id:{position_id}, level:{level}, "
-                         f"history_median_price_value:{market_price_value}, market_price:{market_price}，"
-                         f"len impression_price_list:{len(impression_price_list)}, "
-                         f"len no_impression_price_list:{len(no_impression_price_list)}")
-
-            # 设置市场价格调整比例
-            get_adjust_ratio(logging, media_app_id, position_id, level, impression_price_list,
-                             market_price, chosen_count_map, imp_count_map, ecpm_norm_dict, optimal_ratio_dict)
-
-        # """计算position默认值 """
-        market_price_value = -1.0
-        market_price_value_list = []
-        impression_price_list = []
-        no_impression_price_list = []
-
-        for value in market_price_dict.values():
-            market_price_value_list.append(value)
-
-        if len(market_price_value_list) > 0:
-            market_price_value = round(np.mean(market_price_value_list), 2)
-
-        for value in impression_price_dict.values():
-            impression_price_list += value
-
-        impression_price_list = sorted(impression_price_list, reverse=False)
-
-        for value in no_impression_price.values():
-            no_impression_price_list += value
-
-        no_impression_price_list = sorted(no_impression_price_list, reverse=False)
-
-        if market_price_value == -1.0 or len(impression_price_list) < 100:
-            # TODO market_price_value 使用的媒体回传数据，要限制大小？
-            logging.debug(f"proc_id={multiprocessing.current_process().name},"
-                          f"media_app_id:{media_app_id}, position_id:{position_id}, level:{level},"
-                          f"len(impression_price_list):{len(impression_price_list)} < 10, data is sparse "
-                          f"enough to compute")
-        else:
-            # e-e
-            # market_price 市场价格
-            # chosen_count_map = {}  # 记录选择次数
-            # imp_count_map = {}  # 记录曝光次数
-            market_price, chosen_count_map, imp_count_map = self.bandit(market_price_value,
-                                                                        impression_price_list,
-                                                                        no_impression_price_list)
-
-            logging.info(f"calculate default data proc_id={multiprocessing.current_process().name},"
-                         f"media_app_id:{media_app_id}, position_id:{position_id},"
-                         f"history_median_price_value:{market_price_value}, market_price:{market_price}，"
-                         f"len impression_price_list:{len(impression_price_list)}, "
-                         f"len no_impression_price_list:{len(no_impression_price_list)}")
-
-            # 设置市场价格调整比例
-            get_adjust_ratio(logging, media_app_id, position_id, -1, impression_price_list,
-                             market_price, chosen_count_map, imp_count_map, ecpm_norm_dict, optimal_ratio_dict)
+                # 设置市场价格调整比例
+                get_adjust_ratio(logging, media_app_id, position_id, -1, impression_price_list,
+                                 market_price, chosen_count_map, imp_count_map, ecpm_norm_dict, optimal_ratio_dict)
 
         return optimal_ratio_dict
 
@@ -288,7 +274,6 @@ class UCBBandit(object):
                 sampling_chosen_count_map[max_probs_key] = 0
             sampling_chosen_count_map[max_probs_key] += 1
 
-            min_market_price = max_probs_key
             # 步骤3：2、update
             if max_probs_key in imp_count_map:
                 # np.random.randn(1)[0] -> 改为基于历史数据的采样
@@ -345,7 +330,7 @@ class UCBBandit(object):
                     if x >= min_market_price:
                         if x not in imp_count_map.keys():
                             imp_count_map[x] = 0
-                        imp_count_map[x] += 1 # if x == max_probs_key else 0.1
+                        imp_count_map[x] += 1  # if x == max_probs_key else 0.1
 
                         weight = self.calculate_reward_weigt_quadratic(x, min_market_price)
                         estimared_rewards_map[x] += 1 * weight
@@ -400,12 +385,13 @@ class UCBBandit(object):
                     and position_id in no_impression_obj[media_app_id]:
                 no_impression_price = no_impression_obj[media_app_id][position_id]
 
-            if len(market_price) < 1 or len(impression_price) < 1 or len(no_impression_price) < 1:
-                # 数据不合格跳过
-                logging.info(f"len(market_price):{len(market_price)} < 1 "
-                             f"or len(impression_price):{len(impression_price)} < 1 "
-                             f"or len(no_impression_price):{len(no_impression_price)} < 1")
-                continue
+            if not No_pltv:
+                if len(market_price) < 1 or len(impression_price) < 1 or len(no_impression_price) < 1:
+                    # 数据不合格跳过
+                    logging.info(f"len(market_price):{len(market_price)} < 1 "
+                                 f"or len(impression_price):{len(impression_price)} < 1 "
+                                 f"or len(no_impression_price):{len(no_impression_price)} < 1")
+                    continue
 
             self.calculate_market_price(media_app_id, position_id, market_price, impression_price,
                                         no_impression_price, ecpm_norm_dict, optimal_ratio_dict)
