@@ -1,18 +1,21 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2022/11/10 11:38
-# @Author  : biglongyuan, mfishzhang
-# @Site    : 
-# @File    : UCB.py
+# @Time    : 2022/11/8 15:44
+# @Author  : biglongyuan、mfishzhang
+# @Site    :
+# @File    : UCB_v0.py
 # @Software: PyCharm
-
+import json
 import logging
 import math
 import multiprocessing
 import numpy as np
-from configs.config import PLTV_LEVEL, max_search_num, ratio_step, Environment
+from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, sample_ratio, Environment, No_pltv
 from tools.market_price_distributed import Distributed_Image
+
 from search.get_adjust_ratio import get_adjust_ratio
 import copy
+from collections import defaultdict
+import matplotlib.pyplot as plt
 
 if Environment == "offline":
     logging.basicConfig(
@@ -41,7 +44,8 @@ class UCBBandit(object):
         """
 
     def calculate_market_price(self, media_app_id, position_id, market_price_dict,
-                               impression_price_dict, no_impression_price, ecpm_norm_dict, optimal_ratio_dict):
+                               impression_price_dict, no_impression_price, norm_dict,
+                               ecpm_norm_dict, optimal_ratio_dict):
         """
         计算市场价格
         :params market_price_dict = {pltv:value}
@@ -49,96 +53,91 @@ class UCBBandit(object):
         :params no_impression_price = {pltv:value_list}  响应未曝光数据
         """
         # """分pltv计算"""
-        for level in PLTV_LEVEL:
-            market_price_value = -1.0
-            impression_price_list = []
-            no_impression_price_list = []
-            if level in market_price_dict:
-                market_price_value = market_price_dict[level]
+        if not No_pltv:
+            for level in PLTV_LEVEL:
+                market_price_value = -1.0
+                impression_price_list = []
+                no_impression_price_list = []
+                if level in market_price_dict:
+                    market_price_value = market_price_dict[level]
 
-            if level in impression_price_dict:
-                impression_price_list = sorted(impression_price_dict[level], reverse=False)
+                if level in impression_price_dict:
+                    impression_price_list = sorted(impression_price_dict[level], reverse=False)
 
-            if level in no_impression_price:
-                no_impression_price_list = sorted(no_impression_price[level], reverse=False)
+                if level in no_impression_price:
+                    no_impression_price_list = sorted(no_impression_price[level], reverse=False)
+
+                if market_price_value == -1.0 or len(impression_price_list) < 100:
+                    # TODO market_price_value 使用的媒体回传数据，要限制大小？
+                    logging.debug(f"proc_id={multiprocessing.current_process().name},"
+                                  f"media_app_id:{media_app_id}, position_id:{position_id}, level:{level},"
+                                  f"len(impression_price_list):{len(impression_price_list)} < 10, data is sparse "
+                                  f"enough to compute")
+                    continue
+
+                # e-e
+                # market_price 市场价格
+                # chosen_count_map = {}  # 记录选择次数
+                # imp_count_map = {}  # 记录曝光次数
+                market_price, chosen_count_map, imp_count_map = self.bandit(media_app_id,
+                                                                            position_id,
+                                                                            norm_dict[level],
+                                                                            market_price_value,
+                                                                            impression_price_list,
+                                                                            no_impression_price_list)
+
+                logging.info(f"proc_id={multiprocessing.current_process().name},"
+                             f"media_app_id:{media_app_id}, position_id:{position_id}, level:{level}, "
+                             f"history_median_price_value:{market_price_value}, market_price:{market_price}，"
+                             f"len impression_price_list:{len(impression_price_list)}, "
+                             f"len no_impression_price_list:{len(no_impression_price_list)}")
+
+                # 设置市场价格调整比例
+                get_adjust_ratio(logging, media_app_id, position_id, level, impression_price_list,
+                                 market_price, chosen_count_map, imp_count_map, ecpm_norm_dict, optimal_ratio_dict)
+        else:
+            # """计算position默认值 """
+            market_price_value = round(np.mean(market_price_dict), 2)
+            impression_price_list = impression_price_dict
+            no_impression_price_list = no_impression_price
+            impression_price_list = sorted(impression_price_list, reverse=False)
+            no_impression_price_list = sorted(no_impression_price_list, reverse=False)
 
             if market_price_value == -1.0 or len(impression_price_list) < 100:
                 # TODO market_price_value 使用的媒体回传数据，要限制大小？
                 logging.debug(f"proc_id={multiprocessing.current_process().name},"
-                              f"media_app_id:{media_app_id}, position_id:{position_id}, level:{level},"
+                              f"media_app_id:{media_app_id}, position_id:{position_id}, level: None,"
                               f"len(impression_price_list):{len(impression_price_list)} < 10, data is sparse "
                               f"enough to compute")
-                continue
+            else:
+                # e-e
+                # market_price 市场价格
+                # chosen_count_map = {}  # 记录选择次数
+                # imp_count_map = {}  # 记录曝光次数
+                market_price, chosen_count_map, imp_count_map = self.bandit(media_app_id,
+                                                                            position_id,
+                                                                            norm_dict,
+                                                                            market_price_value,
+                                                                            impression_price_list,
+                                                                            no_impression_price_list)
 
-            # e-e
-            # market_price 市场价格
-            # chosen_count_map = {}  # 记录选择次数
-            # imp_count_map = {}  # 记录曝光次数
-            market_price, chosen_count_map, imp_count_map = self.bandit(market_price_value,
-                                                                        impression_price_list,
-                                                                        no_impression_price_list)
+                logging.info(f"calculate default data proc_id={multiprocessing.current_process().name},"
+                             f"media_app_id:{media_app_id}, position_id:{position_id},"
+                             f"history_median_price_value:{market_price_value}, market_price:{market_price}，"
+                             f"len impression_price_list:{len(impression_price_list)}, "
+                             f"len no_impression_price_list:{len(no_impression_price_list)}")
 
-            logging.info(f"proc_id={multiprocessing.current_process().name},"
-                         f"media_app_id:{media_app_id}, position_id:{position_id}, level:{level}, "
-                         f"history_median_price_value:{market_price_value}, market_price:{market_price}，"
-                         f"len impression_price_list:{len(impression_price_list)}, "
-                         f"len no_impression_price_list:{len(no_impression_price_list)}")
-
-            # 设置市场价格调整比例
-            get_adjust_ratio(logging, media_app_id, position_id, level, impression_price_list,
-                             market_price, chosen_count_map, imp_count_map, ecpm_norm_dict, optimal_ratio_dict)
-
-        # """计算position默认值 """
-        market_price_value = -1.0
-        market_price_value_list = []
-        impression_price_list = []
-        no_impression_price_list = []
-
-        for value in market_price_dict.values():
-            market_price_value_list.append(value)
-
-        if len(market_price_value_list) > 0:
-            market_price_value = round(np.mean(market_price_value_list), 2)
-
-        for value in impression_price_dict.values():
-            impression_price_list += value
-
-        impression_price_list = sorted(impression_price_list, reverse=False)
-
-        for value in no_impression_price.values():
-            no_impression_price_list += value
-
-        no_impression_price_list = sorted(no_impression_price_list, reverse=False)
-
-        if market_price_value == -1.0 or len(impression_price_list) < 100:
-            # TODO market_price_value 使用的媒体回传数据，要限制大小？
-            logging.debug(f"proc_id={multiprocessing.current_process().name},"
-                          f"media_app_id:{media_app_id}, position_id:{position_id}, level:{level},"
-                          f"len(impression_price_list):{len(impression_price_list)} < 10, data is sparse "
-                          f"enough to compute")
-        else:
-            # e-e
-            # market_price 市场价格
-            # chosen_count_map = {}  # 记录选择次数
-            # imp_count_map = {}  # 记录曝光次数
-            market_price, chosen_count_map, imp_count_map = self.bandit(market_price_value,
-                                                                        impression_price_list,
-                                                                        no_impression_price_list)
-
-            logging.info(f"calculate default data proc_id={multiprocessing.current_process().name},"
-                         f"media_app_id:{media_app_id}, position_id:{position_id},"
-                         f"history_median_price_value:{market_price_value}, market_price:{market_price}，"
-                         f"len impression_price_list:{len(impression_price_list)}, "
-                         f"len no_impression_price_list:{len(no_impression_price_list)}")
-
-            # 设置市场价格调整比例
-            get_adjust_ratio(logging, media_app_id, position_id, -1, impression_price_list,
-                             market_price, chosen_count_map, imp_count_map, ecpm_norm_dict, optimal_ratio_dict)
+                # 设置市场价格调整比例
+                get_adjust_ratio(logging, media_app_id, position_id, -1, impression_price_list,
+                                 market_price, chosen_count_map, imp_count_map, ecpm_norm_dict, optimal_ratio_dict)
 
         return optimal_ratio_dict
 
     def calculate_delta(self, total_count, k_chosen_count):
         # total_count->目前的试验次数，k_chosen_count->是这个臂被试次数
+        if total_count == 0:
+            return 0
+
         if k_chosen_count < 1:
             k_chosen_count = 1
 
@@ -162,6 +161,14 @@ class UCBBandit(object):
 
         return reward
 
+    def calculate_reward_weigt_quadratic(self, price, market_price_value):
+        """
+        计算reward权重
+        """
+        reward = 1 - (price - market_price_value) ** 2
+
+        return reward
+
     def bandit_init(self, impression_price_list, no_impression_price_list, market_price_value):
         """
         # bandit 初始化
@@ -170,8 +177,8 @@ class UCBBandit(object):
         chosen_count_map = {}  # 记录选择次数
         imp_count_map = {}  # 记录曝光次数
 
-        right_range = max(abs(impression_price_list[-1] - market_price_value), 1)
-        left_range = max(abs(market_price_value - impression_price_list[0]), 1)
+        # right_range = max(abs(impression_price_list[-1] - market_price_value), 1)
+        # left_range = max(abs(market_price_value - impression_price_list[0]), 1)
 
         # 步骤1：初始化
         for price in impression_price_list:  # 曝光数据
@@ -197,20 +204,15 @@ class UCBBandit(object):
             if price in imp_count_map:
                 rate = float(imp_count_map[price]) / chosen_count_map[price]
 
-            estimared_rewards_map[price] = rate * self.calculate_reward_weigth(price,
-                                                                               market_price_value,
-                                                                               right_range,
-                                                                               left_range)
-
+            estimared_rewards_map[price] = rate * self.calculate_reward_weigt_quadratic(price, market_price_value)
         return chosen_count_map, imp_count_map, estimared_rewards_map
 
-    def bandit(self, market_price_value, impression_price_list, no_impression_price_list):
+    def bandit(self, media_app_id, position_id, norm_dict, market_price_value,
+               impression_price_list, no_impression_price_list):
         """
         e-e探索：UCB方式
         """
         Dis_Image = Distributed_Image(logging)
-        # right_range = max(abs(impression_price_list[-1] - market_price_value), 1)
-        # left_range = max(abs(market_price_value - impression_price_list[0]), 1)
         # 步骤1：初始化
         chosen_count_map, imp_count_map, estimared_rewards_map = self.bandit_init(impression_price_list,
                                                                                   no_impression_price_list,
@@ -231,50 +233,77 @@ class UCBBandit(object):
         len_price_list = len(price_list)
 
         # 步骤3： bandit 计算
-        sampling_imp_count = {}
-        total_count = sum(chosen_count_map.values())
-        old_chosen_count_map = chosen_count_map
+        """      
+        先验 + 模拟（played）的总计数：
+            chosen_count_map: played nums，用于计算alpha，beta
+            imp_count_map: success nms，用于计算alpha，beta
+        模拟（pull）计数：
+            sampling_chosen_count_map: pull nums，用于计算UCB
+        type A更新计数：
+            type_a_update: k > market_price --> k is played && imp[k] += 1，作为reward的分母
+        """
         sampling_chosen_count_map = {}
-        cal_num = min(len(imp_count_map) * 10, 5000)
+        revenue_rate_list = []
+        type_a_update = defaultdict(int)
+
+        search_count_set = []
+
+        cal_num = min(sum(chosen_count_map.values()) * sample_ratio, max_sampling_freq)
         for sampling_freq in range(1, cal_num):
+
             max_upper_bound_probs = 0.0
             max_probs_key = 0
-            total_count += sum(sampling_imp_count.values())
+            total_count = sum(sampling_chosen_count_map.values())
             # 步骤3：1、select arms
             for k in chosen_key_set:
-                # TODO 加入beta期望、方差
-                sampling_count = old_chosen_count_map[k]
+                sampling_count = 0
                 if k in sampling_chosen_count_map:
                     sampling_count += sampling_chosen_count_map[k]
 
-                upper_bound_probs = estimared_rewards_map[k] + self.calculate_delta(total_count, sampling_count)
+                # 计算I
+                if k in imp_count_map:
+                    alpha = max(imp_count_map[k], 1)
+                    beta = max(chosen_count_map[k] - imp_count_map[k], 1)
+                else:
+                    alpha = 1
+                    beta = max(chosen_count_map[k], 1)
+                I = alpha / (alpha + beta) + (alpha * beta) / ((alpha + beta) ** 2 * (alpha + beta + 1))
+
+                upper_bound_probs = estimared_rewards_map[k] / (type_a_update[k] + 1) * I \
+                                    + self.calculate_delta(total_count, sampling_count)
                 if max_upper_bound_probs < upper_bound_probs:
                     max_upper_bound_probs = upper_bound_probs
                     max_probs_key = k
 
+            # 记录上一轮的reward ratio
+            revenue_rate_list.append(estimared_rewards_map[max_probs_key] / (type_a_update[max_probs_key] + 1))
+
             if max_probs_key == 0:
                 continue
 
-            chosen_count_map[max_probs_key] += 1
             if max_probs_key not in sampling_chosen_count_map:
                 sampling_chosen_count_map[max_probs_key] = 0
             sampling_chosen_count_map[max_probs_key] += 1
 
-            min_market_price = max_probs_key
             # 步骤3：2、update
-            if max_probs_key in imp_count_map and max_probs_key in imp_count_map:
+            if max_probs_key in imp_count_map:
                 # np.random.randn(1)[0] -> 改为基于历史数据的采样
                 # beta 先验  float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
                 sample_rate = np.random.beta(imp_count_map[max_probs_key],
-                                             chosen_count_map[max_probs_key] - imp_count_map[max_probs_key])
+                                             max(chosen_count_map[max_probs_key] - imp_count_map[max_probs_key], 1))
                 is_win = np.random.binomial(1, sample_rate)
                 index = price_list.index(max_probs_key)
 
+
+                count = 0
                 if is_win == 1:
                     # 选择的max_probs_key能曝光，向左搜索（减价）
                     index = price_list.index(max_probs_key)
                     index -= 1
                     while index >= 0:
+
+                        count -= 1
+
                         tmp_price = price_list[index]
                         if tmp_price not in imp_count_map or imp_count_map[tmp_price] < 1 \
                                 or chosen_count_map[tmp_price] - imp_count_map[tmp_price] < 1:
@@ -294,6 +323,9 @@ class UCBBandit(object):
                     # 选择的max_probs_key不能曝光，向右搜索（加价）
                     index += 1
                     while index < len_price_list:
+
+                        count += 1
+
                         tmp_price = price_list[index]
                         if tmp_price not in imp_count_map or imp_count_map[tmp_price] < 1 \
                                 or chosen_count_map[tmp_price] - imp_count_map[tmp_price] < 1:
@@ -309,35 +341,20 @@ class UCBBandit(object):
                             break
 
                     index -= 1
-                    
-                min_market_price = price_list[index]
-                for x in chosen_count_map.keys():
-                    if x not in imp_count_map:
-                        imp_count_map[x] = 0
 
+                search_count_set.append(count)
+
+                min_market_price = price_list[index]
+                for x in chosen_key_set:
                     chosen_count_map[x] += 1
                     if x >= min_market_price:
-                        imp_count_map[x] += 1
+                        type_a_update[x] += 1
+                        if x not in imp_count_map.keys():
+                            imp_count_map[x] = 0
+                        imp_count_map[x] += 1  # if x == max_probs_key else 0.1
 
-                        if x not in sampling_imp_count:
-                            sampling_imp_count[x] = 0
-                        sampling_imp_count[x] += 1
-
-            curl_right_range = max(abs(impression_price_list[-1] - min_market_price), 1)
-            curl_left_range = max(abs(min_market_price - impression_price_list[0]), 1)
-
-            for price in chosen_key_set:
-
-                if price not in sampling_imp_count:
-                    continue
-                rate = float(imp_count_map[price]) / chosen_count_map[price]
-                reward_weight = self.calculate_reward_weigth(price, min_market_price, curl_right_range, curl_left_range)
-
-                key_sample_freq = sampling_imp_count[price]
-
-                # TODO: np.random.normal(rate, 1) 需要优化
-                estimared_rewards_map[price] = (key_sample_freq * estimared_rewards_map[price] +
-                                                reward_weight * np.random.normal(rate, 1)) / (key_sample_freq + 1)
+                        weight = self.calculate_reward_weigt_quadratic(x, min_market_price)
+                        estimared_rewards_map[x] += 1 * weight
 
         # 取reward最大值
         market_price = 0
@@ -346,13 +363,28 @@ class UCBBandit(object):
             if value > market_price_score:
                 market_price_score = value
                 market_price = price
+            estimared_rewards_map[price] = value / max_sampling_freq
 
-        Dis_Image.win_rate_image(market_price_value, imp_count_map, chosen_count_map, impression_price_list[0])
+        # Dis_Image.win_rate_image(market_price_value, imp_count_map, chosen_count_map, impression_price_list[0])
+
+        for x in chosen_count_map.keys():
+            if x in true_imp_count_map:
+                imp_count_map[x] = imp_count_map[x] - true_imp_count_map[x]
+            chosen_count_map[x] = chosen_count_map[x] - true_chosen_count_map[x]
+
+
+        # s = np.array(search_count_set)
+        # print(max(s), min(s), np.mean(s), np.std(s))
+
+        Dis_Image.true_pred_win_rate(imp_count_map, chosen_count_map, json.loads(norm_dict["market_price_list"]),
+                                     market_price_value, impression_price_list[0],
+                                     '_'.join([str(media_app_id), str(position_id)]),
+                                     revenue_rate_list, sampling_chosen_count_map)
 
         return market_price, chosen_count_map, imp_count_map
 
     def do_process(self, media_app_id, media_position_dict_obj, market_price_dict_obj, impression_price_dict_obj,
-                   no_impression_obj, ecpm_norm_dict):
+                   no_impression_obj, norm_dict, ecpm_norm_dict):
         """
         根据读取的数据，计算bid shading系数，输出至redis
         :return:
@@ -386,14 +418,15 @@ class UCBBandit(object):
                     and position_id in no_impression_obj[media_app_id]:
                 no_impression_price = no_impression_obj[media_app_id][position_id]
 
-            if len(market_price) < 1 or len(impression_price) < 1 or len(no_impression_price) < 1:
-                # 数据不合格跳过
-                logging.info(f"len(market_price):{len(market_price)} < 1 "
-                             f"or len(impression_price):{len(impression_price)} < 1 "
-                             f"or len(no_impression_price):{len(no_impression_price)} < 1")
-                continue
+            if not No_pltv:
+                if len(market_price) < 1 or len(impression_price) < 1 or len(no_impression_price) < 1:
+                    # 数据不合格跳过
+                    logging.info(f"len(market_price):{len(market_price)} < 1 "
+                                 f"or len(impression_price):{len(impression_price)} < 1 "
+                                 f"or len(no_impression_price):{len(no_impression_price)} < 1")
+                    continue
 
             self.calculate_market_price(media_app_id, position_id, market_price, impression_price,
-                                        no_impression_price, ecpm_norm_dict, optimal_ratio_dict)
+                                        no_impression_price, norm_dict[position_id], ecpm_norm_dict, optimal_ratio_dict)
 
         return optimal_ratio_dict
