@@ -4,7 +4,7 @@
 # @Site    : 
 # @File    : UCB.py
 # @Software: PyCharm
-
+import json
 import logging
 import math
 import multiprocessing
@@ -15,6 +15,7 @@ from tools.market_price_distributed import Distributed_Image
 from search.get_adjust_ratio import get_adjust_ratio
 import copy
 from collections import defaultdict
+import matplotlib.pyplot as plt
 
 if Environment == "offline":
     logging.basicConfig(
@@ -43,7 +44,8 @@ class UCBBandit(object):
         """
 
     def calculate_market_price(self, media_app_id, position_id, market_price_dict,
-                               impression_price_dict, no_impression_price, ecpm_norm_dict, optimal_ratio_dict):
+                               impression_price_dict, no_impression_price, norm_dict,
+                               ecpm_norm_dict, optimal_ratio_dict):
         """
         计算市场价格
         :params market_price_dict = {pltv:value}
@@ -77,7 +79,10 @@ class UCBBandit(object):
                 # market_price 市场价格
                 # chosen_count_map = {}  # 记录选择次数
                 # imp_count_map = {}  # 记录曝光次数
-                market_price, chosen_count_map, imp_count_map = self.bandit(market_price_value,
+                market_price, chosen_count_map, imp_count_map = self.bandit(media_app_id,
+                                                                            position_id,
+                                                                            norm_dict[level],
+                                                                            market_price_value,
                                                                             impression_price_list,
                                                                             no_impression_price_list)
 
@@ -101,7 +106,7 @@ class UCBBandit(object):
             if market_price_value == -1.0 or len(impression_price_list) < 100:
                 # TODO market_price_value 使用的媒体回传数据，要限制大小？
                 logging.debug(f"proc_id={multiprocessing.current_process().name},"
-                              f"media_app_id:{media_app_id}, position_id:{position_id}, level:{level},"
+                              f"media_app_id:{media_app_id}, position_id:{position_id}, level: None,"
                               f"len(impression_price_list):{len(impression_price_list)} < 10, data is sparse "
                               f"enough to compute")
             else:
@@ -109,7 +114,10 @@ class UCBBandit(object):
                 # market_price 市场价格
                 # chosen_count_map = {}  # 记录选择次数
                 # imp_count_map = {}  # 记录曝光次数
-                market_price, chosen_count_map, imp_count_map = self.bandit(market_price_value,
+                market_price, chosen_count_map, imp_count_map = self.bandit(media_app_id,
+                                                                            position_id,
+                                                                            norm_dict,
+                                                                            market_price_value,
                                                                             impression_price_list,
                                                                             no_impression_price_list)
 
@@ -133,7 +141,7 @@ class UCBBandit(object):
         if k_chosen_count < 1:
             k_chosen_count = 1
 
-        return math.sqrt(2 * math.log10(total_count) / float(k_chosen_count))
+        return math.sqrt(2 * math.log(total_count) / float(k_chosen_count))
 
     def calculate_reward_weigth(self, price, market_price_value, right_range, left_range):
         """
@@ -169,8 +177,8 @@ class UCBBandit(object):
         chosen_count_map = {}  # 记录选择次数
         imp_count_map = {}  # 记录曝光次数
 
-        right_range = max(abs(impression_price_list[-1] - market_price_value), 1)
-        left_range = max(abs(market_price_value - impression_price_list[0]), 1)
+        # right_range = max(abs(impression_price_list[-1] - market_price_value), 1)
+        # left_range = max(abs(market_price_value - impression_price_list[0]), 1)
 
         # 步骤1：初始化
         for price in impression_price_list:  # 曝光数据
@@ -195,22 +203,16 @@ class UCBBandit(object):
             rate = 0.0
             if price in imp_count_map:
                 rate = float(imp_count_map[price]) / chosen_count_map[price]
-            """
-            estimared_rewards_map[price] = rate * self.calculate_reward_weigth(price,
-                                                                               market_price_value,
-                                                                               right_range,
-                                                                               left_range)
-            """
+
             estimared_rewards_map[price] = rate * self.calculate_reward_weigt_quadratic(price, market_price_value)
         return chosen_count_map, imp_count_map, estimared_rewards_map
 
-    def bandit(self, market_price_value, impression_price_list, no_impression_price_list):
+    def bandit(self, media_app_id, position_id, norm_dict, market_price_value,
+               impression_price_list, no_impression_price_list):
         """
         e-e探索：UCB方式
         """
         Dis_Image = Distributed_Image(logging)
-        # right_range = max(abs(impression_price_list[-1] - market_price_value), 1)
-        # left_range = max(abs(market_price_value - impression_price_list[0]), 1)
         # 步骤1：初始化
         chosen_count_map, imp_count_map, estimared_rewards_map = self.bandit_init(impression_price_list,
                                                                                   no_impression_price_list,
@@ -231,26 +233,32 @@ class UCBBandit(object):
         len_price_list = len(price_list)
 
         # 步骤3： bandit 计算
-        true_total_chosen_count = sum(chosen_count_map.values())
-        sampling_imp_count = defaultdict(int)
+        """      
+        先验 + 模拟（played）的总计数：
+            chosen_count_map: played nums，用于计算alpha，beta
+            imp_count_map: success nms，用于计算alpha，beta
+        模拟（pull）计数：
+            sampling_chosen_count_map: pull nums，用于计算UCB
+        type A更新计数：
+            type_a_update: k > market_price --> k is played && imp[k] += 1，作为reward的分母
+        """
         sampling_chosen_count_map = {}
+        revenue_rate_list = []
+        type_a_update = defaultdict(int)
 
-        cal_num = min(true_total_chosen_count * sample_ratio, max_sampling_freq)
+        search_count_set = []
+
+        cal_num = min(sum(chosen_count_map.values()) * sample_ratio, max_sampling_freq)
         for sampling_freq in range(1, cal_num):
+
             max_upper_bound_probs = 0.0
             max_probs_key = 0
             total_count = sum(sampling_chosen_count_map.values())
             # 步骤3：1、select arms
             for k in chosen_key_set:
-                # TODO 加入beta期望、方差
-                # sampling_count = true_chosen_count_map[k]
                 sampling_count = 0
                 if k in sampling_chosen_count_map:
                     sampling_count += sampling_chosen_count_map[k]
-                """
-                if k in true_chosen_count_map:
-                    sampling_count += true_chosen_count_map[k]
-                """
 
                 # 计算I
                 if k in imp_count_map:
@@ -261,11 +269,14 @@ class UCBBandit(object):
                     beta = max(chosen_count_map[k], 1)
                 I = alpha / (alpha + beta) + (alpha * beta) / ((alpha + beta) ** 2 * (alpha + beta + 1))
 
-                upper_bound_probs = estimared_rewards_map[k] / sampling_freq * I \
+                upper_bound_probs = estimared_rewards_map[k] / (type_a_update[k] + 1) * I \
                                     + self.calculate_delta(total_count, sampling_count)
                 if max_upper_bound_probs < upper_bound_probs:
                     max_upper_bound_probs = upper_bound_probs
                     max_probs_key = k
+
+            # 记录上一轮的reward ratio
+            revenue_rate_list.append(estimared_rewards_map[max_probs_key] / (type_a_update[max_probs_key] + 1))
 
             if max_probs_key == 0:
                 continue
@@ -283,12 +294,16 @@ class UCBBandit(object):
                 is_win = np.random.binomial(1, sample_rate)
                 index = price_list.index(max_probs_key)
 
+
+                count = 0
                 if is_win == 1:
-                    sampling_imp_count[max_probs_key] += 1
                     # 选择的max_probs_key能曝光，向左搜索（减价）
                     index = price_list.index(max_probs_key)
                     index -= 1
                     while index >= 0:
+
+                        count -= 1
+
                         tmp_price = price_list[index]
                         if tmp_price not in imp_count_map or imp_count_map[tmp_price] < 1 \
                                 or chosen_count_map[tmp_price] - imp_count_map[tmp_price] < 1:
@@ -308,6 +323,9 @@ class UCBBandit(object):
                     # 选择的max_probs_key不能曝光，向右搜索（加价）
                     index += 1
                     while index < len_price_list:
+
+                        count += 1
+
                         tmp_price = price_list[index]
                         if tmp_price not in imp_count_map or imp_count_map[tmp_price] < 1 \
                                 or chosen_count_map[tmp_price] - imp_count_map[tmp_price] < 1:
@@ -323,11 +341,14 @@ class UCBBandit(object):
                             break
 
                     index -= 1
-                    
+
+                search_count_set.append(count)
+
                 min_market_price = price_list[index]
                 for x in chosen_key_set:
                     chosen_count_map[x] += 1
                     if x >= min_market_price:
+                        type_a_update[x] += 1
                         if x not in imp_count_map.keys():
                             imp_count_map[x] = 0
                         imp_count_map[x] += 1  # if x == max_probs_key else 0.1
@@ -345,13 +366,25 @@ class UCBBandit(object):
             estimared_rewards_map[price] = value / max_sampling_freq
 
         # Dis_Image.win_rate_image(market_price_value, imp_count_map, chosen_count_map, impression_price_list[0])
-        Dis_Image.true_pred_win_rate(imp_count_map, chosen_count_map, true_imp_count_map, true_chosen_count_map,
-                                     market_price_value, impression_price_list[0])
+
+        for x in chosen_count_map.keys():
+            if x in true_imp_count_map:
+                imp_count_map[x] = imp_count_map[x] - true_imp_count_map[x]
+            chosen_count_map[x] = chosen_count_map[x] - true_chosen_count_map[x]
+
+
+        # s = np.array(search_count_set)
+        # print(max(s), min(s), np.mean(s), np.std(s))
+
+        Dis_Image.true_pred_win_rate(imp_count_map, chosen_count_map, json.loads(norm_dict["market_price_list"]),
+                                     market_price_value, impression_price_list[0],
+                                     '_'.join([str(media_app_id), str(position_id)]),
+                                     revenue_rate_list, sampling_chosen_count_map)
 
         return market_price, chosen_count_map, imp_count_map
 
     def do_process(self, media_app_id, media_position_dict_obj, market_price_dict_obj, impression_price_dict_obj,
-                   no_impression_obj, ecpm_norm_dict):
+                   no_impression_obj, norm_dict, ecpm_norm_dict):
         """
         根据读取的数据，计算bid shading系数，输出至redis
         :return:
@@ -394,6 +427,6 @@ class UCBBandit(object):
                     continue
 
             self.calculate_market_price(media_app_id, position_id, market_price, impression_price,
-                                        no_impression_price, ecpm_norm_dict, optimal_ratio_dict)
+                                        no_impression_price, norm_dict[position_id], ecpm_norm_dict, optimal_ratio_dict)
 
         return optimal_ratio_dict

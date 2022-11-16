@@ -8,7 +8,7 @@ import json
 
 import numpy as np
 import pandas as pd
-from configs.config import DATA_PATH, INCREASE_RATIO, DATA_NUMS_LOWER_BOUND, No_pltv
+from configs.config import DATA_PATH, INCREASE_RATIO, DATA_NUMS_LOWER_BOUND, No_pltv, BIN_NUMS
 
 
 class ReadData(object):
@@ -45,12 +45,21 @@ class ReadData(object):
         return data_pd
 
     def data_filter(self, data_pd):
-        tmp = data_pd[data_pd['win_price'] > 0]  # win_price>0
-        win_price_list = np.array(tmp['win_price'])
+        # 对出价过滤95分位数
+        tmp = data_pd[data_pd['response_ecpm'] > 0]  # win_price>0
+        win_price_list = np.array(tmp['response_ecpm'])
         per_95 = np.percentile(win_price_list, 95)  # 95 分位数
         self.logging.info(f"pre_95:{per_95}, median:{np.median(win_price_list)}")
-        data_pd = data_pd[data_pd['win_price'] <= per_95]  # 过滤 95 分位数
+        data_pd = data_pd[data_pd['response_ecpm'] <= per_95]  # 过滤 95 分位数
 
+        """
+        # 对市场价winner bid price过滤5分位数
+        tmp = data_pd[data_pd['winner_bid_price'] > 0]  # win_price>0
+        win_price_list = np.array(tmp['winner_bid_price'])
+        per_95 = np.percentile(win_price_list, 95)  # 95 分位数
+        self.logging.info(f"pre_95:{per_95}, median:{np.median(win_price_list)}")
+        data_pd = data_pd[data_pd['winner_bid_price'] <= per_95]  # 过滤 95 分位数
+        """
         self.logging.info(f"data_pd:{data_pd.head(10)}")
 
         return data_pd
@@ -78,13 +87,13 @@ class ReadData(object):
                                     / (group_pd["norm_max"] - group_pd["norm_min"])
 
             # 离散化
-            bins = pd.qcut(group_pd["norm_ecpm"], q=100, retbins=True)[1]
+            bins = pd.qcut(group_pd["norm_ecpm"], q=BIN_NUMS, retbins=True)[1]
             bins[0] = 0
 
-            group_pd["interval"] = pd.qcut(group_pd["norm_ecpm"], q=100)
-            group_pd["interval_index"] = pd.qcut(group_pd["norm_ecpm"], q=100, labels=False)
+            group_pd["interval"] = pd.qcut(group_pd["norm_ecpm"], q=BIN_NUMS)
+            group_pd["interval_index"] = pd.qcut(group_pd["norm_ecpm"], q=BIN_NUMS, labels=False)
             group_pd["bins"] = json.dumps(list(bins))
-            
+
             norm_pd_list.append(group_pd)
 
         data_pd = pd.concat(norm_pd_list)
@@ -208,10 +217,19 @@ class ReadData(object):
                 write_line = group_pd.iloc[0]
                 if media_app_id not in norm_dict:
                     norm_dict[media_app_id] = {}
+
+                group_pd["market_price"] = np.select(
+                    [group_pd["win_price"] > group_pd["winner_bid_price"]],
+                    [group_pd["win_price"]], default=group_pd["winner_bid_price"]
+                )
+
+                cut_bins = pd.cut(group_pd["market_price"], bins=json.loads(write_line["bins"]))
+
                 norm_dict[media_app_id][position_id]= {
                     "norm_min": write_line["norm_min"],
                     "norm_max": write_line["norm_max"],
-                    "bins": write_line["bins"]
+                    "bins": write_line["bins"],
+                    "market_price_list": json.dumps(list(group_pd["market_price"].groupby(cut_bins).count()))
                 }
         else:
             for key, group_pd in data_pd.groupby(["key"]):
@@ -222,10 +240,18 @@ class ReadData(object):
                 if position_id not in norm_dict[media_app_id]:
                     norm_dict[media_app_id][position_id] = {}
 
+                group_pd["market_price"] = np.select(
+                    [group_pd["win_price"] > group_pd["winner_bid_price"]],
+                    [group_pd["win_price"]], default=group_pd["winner_bid_price"]
+                )
+
+                cut_bins = pd.cut(group_pd["market_price"], bins=json.loads(write_line["bins"]))
+
                 norm_dict[media_app_id][position_id][pltv] = {
                     "norm_min": write_line["norm_min"],
                     "norm_max": write_line["norm_max"],
-                    "bins": write_line["bins"]
+                    "bins": write_line["bins"],
+                    "market_price_list": json.dumps(list(group_pd["market_price"].groupby(cut_bins).count()))
                 }
 
         self.logging.info(f"len imp_dict:{len(imp_dict)},  len no_imp_dict:{len(no_imp_dict)}, "

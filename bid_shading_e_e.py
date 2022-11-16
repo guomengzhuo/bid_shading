@@ -21,6 +21,7 @@ import logging
 import numpy as np
 import pandas as pd
 
+
 if Environment == "offline":
     logging.basicConfig(
         level=logging.INFO,
@@ -108,7 +109,8 @@ class BidShading(object):
             evaluate_l = {}
             for media_app_id in self.media_position_dict.keys():
                 res = bandit.do_process(media_app_id, self.media_position_dict, self.market_price_dict,
-                                        self.impression_price_dict, self.no_impression_price_dict, self.ecpm_norm_dict)
+                                        self.impression_price_dict, self.no_impression_price_dict,
+                                        self.norm_dict[media_app_id], self.ecpm_norm_dict)
                 res_l[media_app_id] = res
                 self.optimal_ratio_dict.update(res)  # 保存进程返回结果
             # evaluate_l = re.result_evaluation(res_l)  # TODO 评估方法待确定

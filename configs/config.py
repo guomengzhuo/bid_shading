@@ -18,6 +18,9 @@ INCREASE_RATIO = 1.5
 # PLTV_LEVEL = [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 PLTV_LEVEL = [1, 2, 3, 4]
 
+# 离散化的分桶数量
+BIN_NUMS = 100
+
 # 并行数量
 parallel_num = 6
 
@@ -25,10 +28,10 @@ parallel_num = 6
 max_search_num = 200000
 
 # 最大迭代次数
-max_sampling_freq = 1e7
+max_sampling_freq = 100000
 
 # 迭代次数与历史数据的比例
-sample_ratio = 10
+sample_ratio = 3
 
 # 存在redis的步长
 ratio_step = 10

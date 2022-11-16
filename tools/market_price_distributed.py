@@ -6,6 +6,7 @@
 # @Software: PyCharm
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 class Distributed_Image(object):
@@ -47,12 +48,16 @@ class Distributed_Image(object):
 
         plt.show()
 
-    def true_pred_win_rate(self, pred_imp_count_map, pred_chosen_count_map, true_imp_count_map, true_chosen_count_map,
-                           market_price_value, min_imp_price):
-        pred_win_rate = {
-            i: pred_imp_count_map[i] / pred_chosen_count_map[i] for i in pred_imp_count_map.keys()
-        }
+    def true_pred_win_rate(self, pred_imp_count_map, pred_chosen_count_map, market_price_list,
+                           market_price_value, min_imp_price, name, revenue_rate_list, sampling_chosen_count_map):
+        pred_win_rate = {}
+        for i in pred_chosen_count_map.keys():
+            if i in pred_imp_count_map.keys():
+                pred_win_rate[i] = pred_imp_count_map[i] / pred_chosen_count_map[i]
+            else:
+                pred_win_rate[i] = 0
 
+        """
         true_win_rate = {}
         acc_imp = 0
         acc_response = sum(true_chosen_count_map.values())
@@ -65,15 +70,25 @@ class Distributed_Image(object):
             true_win_rate[i] = (acc_imp + true_imp_count_map[i]) / (acc_imp + true_chosen_count_map[i] + acc_response)
             acc_imp += true_imp_count_map[i]
             acc_response -= true_chosen_count_map[i]
+        """
+        acc = 0
+        true_win_rate = []
+        total_win_nums = sum(market_price_list)
+        for win_nums in market_price_list:
+            acc += win_nums
+            true_win_rate.append(acc / total_win_nums)
 
         for i in pred_win_rate.keys():
             if i >= market_price_value:
                 _market_price_value = i
                 break
         fig = plt.figure(dpi=300)
-        # plt.title("{} distribution of game {}, date {}, user type{}".format())
+        plt.title("{} distribution".format(name))
         plt.scatter(pred_win_rate.keys(), pred_win_rate.values(), c='r', s=5, label="pred")
-        plt.scatter(true_win_rate.keys(), true_win_rate.values(), c='blue', s=5, alpha=0.5, label='true')
+        plt.scatter(sorted(pred_win_rate.keys()), true_win_rate, c='blue', s=5, alpha=0.5, label='true')
+        plt.scatter(sampling_chosen_count_map.keys(),
+                    np.array(list(sampling_chosen_count_map.values())) / max(sampling_chosen_count_map.values()),
+                    c='black', s=5, alpha=0.5, label='sample_nums')
 
         plt.scatter(_market_price_value, pred_win_rate[_market_price_value], c="green", marker="^")
         if min_imp_price in pred_win_rate:
@@ -82,3 +97,5 @@ class Distributed_Image(object):
         plt.legend()
         plt.show()
 
+        plt.plot(revenue_rate_list)
+        plt.show()
