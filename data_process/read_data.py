@@ -39,6 +39,9 @@ class ReadData(object):
             , 'response_ecpm': np.float
             , 'win_price': np.float
             , 'winner_bid_price': np.float
+            , 'click_num': np.int64
+            , 'target_cpa': np.float
+            , 'pay_amount': np.float
         })
 
         self.logging.info(f"data_pd:{data_pd.head(10)}")
