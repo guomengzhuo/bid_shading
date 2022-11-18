@@ -135,8 +135,8 @@ class UCBBandit(object):
                            market_price_norm, chosen_count_map, imp_count_map, norm_dict,
                            optimal_ratio_dict):
 
-        norm_max = norm_dict[position_id]["norm_max"]
-        norm_min = norm_dict[position_id]["norm_min"]
+        norm_max = norm_dict["norm_max"]
+        norm_min = norm_dict["norm_min"]
         market_price = market_price_norm * (norm_max - norm_min) + norm_min
 
         upper_bound = int(1.5 * market_price)
@@ -159,7 +159,7 @@ class UCBBandit(object):
         optimal_ratio_dict[key]['upper_lower_boundbound'] = lower_bound
         optimal_ratio_dict[key]['chosen_count_map'] = chosen_count_map
         optimal_ratio_dict[key]['imp_count_map'] = imp_count_map
-        optimal_ratio_dict[key]['norm_dict'] = norm_dict[position_id]
+        optimal_ratio_dict[key]['norm_dict'] = norm_dict
 
         return optimal_ratio_dict
 

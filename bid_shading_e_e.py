@@ -112,7 +112,7 @@ class BidShading(object):
                                         self.impression_price_dict, self.no_impression_price_dict,
                                         self.norm_dict[media_app_id])
                 res_l[media_app_id] = res
-                self.optimal_ratio_dict134.update(res)  # 保存进程返回结果
+                self.optimal_ratio_dict.update(res)  # 保存进程返回结果
             # evaluate_l = re.result_evaluation(res_l)  # TODO 评估方法待确定
         else:
             pool = Pool(parallel_num)  # 构建进程池
