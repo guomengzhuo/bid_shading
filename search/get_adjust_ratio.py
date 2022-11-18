@@ -38,6 +38,7 @@ def get_adjust_ratio(logging, media_app_id, position_id, level, impression_price
 
     # todo(@mfishzhang): 修改
     # ecpm_list = np.arange(lower_bound, upper_bound, step)
+    # TDDO 要改为测试数据
     ecpm_list = np.arange(lower_bound, upper_bound, step)
     adjust_ratio = []
     gain_list = []
