@@ -403,11 +403,10 @@ class UCBBandit(object):
                 imp_count_map[x] = imp_count_map[x] - true_imp_count_map[x]
             chosen_count_map[x] = chosen_count_map[x] - true_chosen_count_map[x]
 
-
         # s = np.array(search_count_set)
         # print(max(s), min(s), np.mean(s), np.std(s))
 
-        Dis_Image.true_pred_win_rate(imp_count_map, chosen_count_map, json.loads(norm_dict["market_price_list"]),
+        Dis_Image.true_pred_win_rate(imp_count_map, chosen_count_map, true_imp_count_map, true_chosen_count_map,
                                      market_price_value, impression_price_list[0],
                                      '_'.join([str(media_app_id), str(position_id)]),
                                      revenue_rate_list, sampling_chosen_count_map)
