@@ -7,7 +7,7 @@
 
 import numpy as np
 import pandas as pd
-from configs.config import TEST_DATA_PATH
+from configs.config import TEST_DATA_PATH, No_pltv, ratio_step
 from data_process.read_data import ReadData
 
 
@@ -23,6 +23,16 @@ class ResultEvaluate(object):
         self.logging = logging
         self.rd = ReadData(logging=self.logging, data_path=TEST_DATA_PATH)
         self.test_dataset = self.rd.test_data_process()
+
+    def analyze_bandit_dict(self, bandit_dict):
+        bandit_result = {}
+        for key, optimal_ratio_dict in bandit_dict.items():
+            key_list = key.split("_")
+            media_app_id = key_list[0]
+            position_id = key_list[1]
+            pltv_level = -1
+            if not No_pltv and len(key_list) == 3:
+                pltv_level = key_list[2]
 
     def result_evaluation(self, result):
         # 读取测试数据集
