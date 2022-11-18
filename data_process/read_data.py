@@ -277,7 +277,8 @@ class ReadData(object):
             data_pd_test["target_price"] = data_pd_test[["win_price", "winner_bid_price"]].T.max()
             data_pd_test["virtual_ecpm"] = data_pd_test["response_ecpm"] * INCREASE_RATIO
 
-        return data_pd_test[["key", "response_ecpm", "target_price", "virtual_ecpm"]]
+        return data_pd_test[["key", "response_ecpm", "target_price", "virtual_ecpm", "click_num",
+                             "target_cpa", "pay_amount"]]
 
 
 if __name__ == '__main__':

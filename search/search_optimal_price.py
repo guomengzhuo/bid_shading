@@ -23,14 +23,13 @@ max(∑(p(b*)(E(income) - b*)) - ecpm_income) -> max(∑(p(b*)(E(income) - b*)))
 """
 
 
-def search_price_for_optimal_cost(logging, ecpm, market_price, upper_bound, chosen_count_map,
-                                  imp_count_map, ecpm_norm_dict):
+def search_price_for_optimal_cost(logging, ecpm, market_price, chosen_count_map,
+                                  imp_count_map):
     """
     通过最大化∑win_rate * (ecpm-price), 找到最优出价点
     """
-    ratio = 1.0
+    opt_price = 1.0
     gain = 0
-    opt_price = 0
     win_rate_dict = {}
     for price, chosen_count in chosen_count_map.items():
         if chosen_count < 1 or price not in imp_count_map:
@@ -45,13 +44,12 @@ def search_price_for_optimal_cost(logging, ecpm, market_price, upper_bound, chos
         expect_gain = win_rate * (ecpm - price)
         if expect_gain > gain:
             gain = expect_gain
-            ratio = price * 1.0 / ecpm
             opt_price = price
 
-    ratio = round(ratio, 4)
+    opt_price = round(opt_price, 4)
 
-    logging.info(f"market_price:{market_price}, opt_price:{opt_price}, ecpm:{ecpm}, ratio:{ratio}, gain:{gain},"
-                 f" upper_bound:{upper_bound}, win_rate_dict:{win_rate_dict}")
+    logging.info(f"market_price:{market_price}, opt_price:{opt_price}, ecpm:{ecpm}, gain:{gain},"
+                 f"win_rate_dict:{win_rate_dict}")
     return ratio, gain
 
 

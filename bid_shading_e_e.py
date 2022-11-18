@@ -105,13 +105,10 @@ class BidShading(object):
         if not search_test:
             # 2、计算并保存数据
             if not Multi_Process:
-                res_l = {}  # 临时保持返回结果 for media_app_id
-                evaluate_l = {}
                 for media_app_id in self.media_position_dict.keys():
                     res = bandit.do_process(media_app_id, self.media_position_dict, self.market_price_dict,
                                             self.impression_price_dict, self.no_impression_price_dict,
                                             self.norm_dict[media_app_id])
-                    res_l[media_app_id] = res
                     self.optimal_ratio_dict.update(res)  # 保存进程返回结果
                 # evaluate_l = re.result_evaluation(res_l)  # TODO 评估方法待确定
             else:
@@ -143,6 +140,8 @@ class BidShading(object):
 
         self.logging.info(f"run -> end len(optimal_ratio_dict):{len(self.optimal_ratio_dict)}")
         self.logging.info(f"output optimal_ratio_dict:{self.optimal_ratio_dict}")
+
+        re.do_process(self.optimal_ratio_dict)
 
         # 3、计算完 删除临时文件
         self.remove_local_backend()

@@ -90,7 +90,7 @@ class UCBBandit(object):
                              f"len impression_price_list:{len(impression_price_list)}, "
                              f"len no_impression_price_list:{len(no_impression_price_list)}")
 
-                optimal_ratio_dict = self.save_bandit_result(media_app_id, position_id, level, impression_price_list,
+                optimal_ratio_dict = self.save_bandit_result(media_app_id, position_id, level,
                                                              market_price, chosen_count_map, imp_count_map,
                                                              norm_dict, optimal_ratio_dict)
         else:
@@ -125,26 +125,19 @@ class UCBBandit(object):
                              f"len impression_price_list:{len(impression_price_list)}, "
                              f"len no_impression_price_list:{len(no_impression_price_list)}")
 
-                optimal_ratio_dict = self.save_bandit_result(media_app_id, position_id, -1, impression_price_list,
+                optimal_ratio_dict = self.save_bandit_result(media_app_id, position_id, -1,
                                                              market_price, chosen_count_map, imp_count_map,
                                                              norm_dict, optimal_ratio_dict)
 
         return optimal_ratio_dict
 
-    def save_bandit_result(self, media_app_id, position_id, level, impression_price_list,
+    def save_bandit_result(self, media_app_id, position_id, level,
                            market_price_norm, chosen_count_map, imp_count_map, norm_dict,
                            optimal_ratio_dict):
 
         norm_max = norm_dict["norm_max"]
         norm_min = norm_dict["norm_min"]
         market_price = market_price_norm * (norm_max - norm_min) + norm_min
-
-        upper_bound = int(1.5 * market_price)
-        if len(impression_price_list) > 1:
-            max_imp_price = impression_price_list[-1] * (norm_max - norm_min) + norm_min
-            upper_bound = int(max(max_imp_price * 1.1, 1.5 * market_price))
-
-        lower_bound = int(market_price * 0.9)
 
         if level == -1:
             key = f"{media_app_id}_{position_id}"
@@ -155,8 +148,6 @@ class UCBBandit(object):
             optimal_ratio_dict[key] = {}
 
         optimal_ratio_dict[key]['market_price'] = market_price
-        optimal_ratio_dict[key]['upper_bound'] = upper_bound
-        optimal_ratio_dict[key]['upper_lower_boundbound'] = lower_bound
         optimal_ratio_dict[key]['chosen_count_map'] = chosen_count_map
         optimal_ratio_dict[key]['imp_count_map'] = imp_count_map
         optimal_ratio_dict[key]['norm_dict'] = norm_dict

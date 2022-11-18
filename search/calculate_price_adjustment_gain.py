@@ -17,9 +17,9 @@ class calculate_price_adjustment_gain(object):
     def __init__(self, logging):
         self.logging = logging
 
-    def get_adjust_ratio(self, media_app_id, position_id, level, impression_price_list,
-                         market_price_norm, chosen_count_map, imp_count_map, ecpm_norm_dict,
-                         optimal_ratio_dict, test_imp_dict):
+    def get_output_redis_adjust_ratio(self, media_app_id, position_id, level, impression_price_list,
+                                      market_price_norm, chosen_count_map, imp_count_map, ecpm_norm_dict,
+                                      optimal_ratio_dict):
         """
         设置市场价格调整比例
         """
@@ -68,6 +68,26 @@ class calculate_price_adjustment_gain(object):
         self.logging.info(f"key:{key}, upper_bound:{upper_bound}, lower_bound:{lower_bound}, "
                           f"market_price:{market_price}, sum_income:{sum(gain_list)}, "
                           f"avg_income:{sum(gain_list) / len(gain_list)}")
+
+    def get_adjust_price(self, ecpm_list, market_price, chosen_count_map, imp_count_map, norm_dict):
+        """
+        给定ecpm，计算最优出价
+        """
+
+        norm_max = norm_dict["norm_max"]
+        norm_min = norm_dict["norm_min"]
+        price_list = []
+        gain_list = []
+
+        for ecpm in ecpm_list:
+            ecpm = ecpm * (norm_max - norm_min) + norm_min
+            price, gain = search_price_for_optimal_cost(self.logging, ecpm, market_price, upper_bound,
+                                                        chosen_count_map, imp_count_map, norm_dict)
+            self.logging(f"ecpm:{ecpm}, price:{price}, gain:{gain}")
+            price_list.append(price)
+            gain_list.append(gain)
+
+        return price_list, gain_list
 
     def test_data_find_optimization_gain(self, media_app_id, position_id, level, impression_price_list,
                                          market_price_norm, chosen_count_map, imp_count_map,
