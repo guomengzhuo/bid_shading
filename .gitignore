@@ -161,3 +161,4 @@ cython_debug/
 .DS_Store
 figure
 configs/__pycache__
+result
