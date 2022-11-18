@@ -7,6 +7,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 
 class Distributed_Image(object):
@@ -79,7 +80,7 @@ class Distributed_Image(object):
         plt.title("{} distribution".format(name))
         plt.scatter(pred_win_rate.keys(), pred_win_rate.values(), c='r', s=5, label="pred")
         plt.scatter(true_win_rate.keys(), true_win_rate.values(), c='blue', s=5, alpha=0.5, label='true')
-        # plt.scatter(true_win_rate_acc.keys(), true_win_rate_acc.values(), c='black', s=5, alpha=0.5, label='true_acc')
+        plt.scatter(true_win_rate_acc.keys(), true_win_rate_acc.values(), c='black', s=5, alpha=0.5, label='true_acc')
         """
         plt.scatter(sampling_chosen_count_map.keys(),
                     np.array(list(sampling_chosen_count_map.values())) / max(sampling_chosen_count_map.values()),
@@ -90,9 +91,20 @@ class Distributed_Image(object):
             plt.scatter(min_imp_price, pred_win_rate[min_imp_price], c="green", marker="*")
 
         plt.legend()
+
+        [media_app_id, position_id] = name.split('_')
+        figure_dir = "./figure/{}".format(media_app_id)
+        if not os.path.exists(figure_dir):
+            os.makedirs(figure_dir)
+
+        plt.savefig(figure_dir + "/pred_win_rate_media_{}_position_{}.png"
+                    .format(media_app_id, position_id))
         plt.show()
 
         plt.figure(dpi=300)
         plt.title("{} reward ratio".format(name))
-        plt.scatter(list(range(len(revenue_rate_list))), revenue_rate_list, s=5)
+        plt.scatter(list(range(len(revenue_rate_list))), revenue_rate_list, s=5, alpha=0.5)
+
+        plt.savefig(figure_dir + "/reward_ratio_media_{}_position_{}.png"
+                    .format(media_app_id, position_id))
         plt.show()
