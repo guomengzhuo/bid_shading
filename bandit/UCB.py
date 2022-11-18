@@ -307,7 +307,7 @@ class UCBBandit(object):
                     max_probs_key = k
 
             # 记录上一轮的reward ratio
-            revenue_rate_list.append(estimared_rewards_map[max_probs_key] / (type_a_update[max_probs_key] + 1))
+            revenue_rate_list.append(max_upper_bound_probs)
 
             if max_probs_key == 0:
                 continue
