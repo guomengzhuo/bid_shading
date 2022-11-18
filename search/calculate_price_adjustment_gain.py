@@ -81,9 +81,9 @@ class calculate_price_adjustment_gain(object):
 
         for ecpm in ecpm_list:
             ecpm = ecpm * (norm_max - norm_min) + norm_min
-            price, gain = search_price_for_optimal_cost(self.logging, ecpm, market_price, upper_bound,
+            price, gain = search_price_for_optimal_cost(self.logging, ecpm, market_price,
                                                         chosen_count_map, imp_count_map, norm_dict)
-            self.logging(f"ecpm:{ecpm}, price:{price}, gain:{gain}")
+            self.logging.info(f"ecpm:{ecpm}, price:{price}, gain:{gain}")
             price_list.append(price)
             gain_list.append(gain)
 

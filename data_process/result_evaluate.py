@@ -65,6 +65,9 @@ class ResultEvaluate(object):
         for key, result_dict in result.items():
             test_pd = self.data_list[self.data_list.key == key]
             market_price = result_dict["market_price"]
+            chosen_count_map = result_dict["chosen_count_map"]
+            imp_count_map = result_dict["imp_count_map"]
+            norm_dict = result_dict["norm_dict"]
             price, gain = self.cal_price_adjustment_gain.get_adjust_price(test_pd["response_ecpm"], market_price,
                                                                           chosen_count_map,
                                                                           imp_count_map, norm_dict)
@@ -101,7 +104,7 @@ class ResultEvaluate(object):
                               f"win rate increase: {win_rate_increase}, cpm after: {cpm_increase} \n"
                               f"win rate after: {win_rate_after}, cpm after: {cpm_after}")
 
-            evaluation[media_app_id][key] = {
+            evaluation[key] = {
                 "win_rate_before"
             }
 
