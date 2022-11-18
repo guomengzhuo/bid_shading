@@ -64,11 +64,19 @@ class ResultEvaluate(object):
 
         for key, result_dict in result.items():
             test_pd = self.data_list[self.data_list.key == key]
+            if test_pd.empty:
+                self.logging.info(f"key:{key}, test_pd is empty!")
+                continue
+
+            # self.logging.info(f"key:{key}, test_pd:\n{test_pd.head()}")
             market_price = result_dict["market_price"]
             chosen_count_map = result_dict["chosen_count_map"]
             imp_count_map = result_dict["imp_count_map"]
             norm_dict = result_dict["norm_dict"]
-            price, gain = self.cal_price_adjustment_gain.get_adjust_price(test_pd["response_ecpm"], market_price,
+            price, gain = self.cal_price_adjustment_gain.get_adjust_price(test_pd[["response_ecpm", "win_price",
+                                                                                   "click_num",
+                                                                                   "target_cpa", "pay_amount"]],
+                                                                          market_price,
                                                                           chosen_count_map,
                                                                           imp_count_map, norm_dict)
 

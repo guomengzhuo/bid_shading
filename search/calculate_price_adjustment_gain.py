@@ -69,7 +69,7 @@ class calculate_price_adjustment_gain(object):
                           f"market_price:{market_price}, sum_income:{sum(gain_list)}, "
                           f"avg_income:{sum(gain_list) / len(gain_list)}")
 
-    def get_adjust_price(self, ecpm_list, market_price, chosen_count_map, imp_count_map, norm_dict):
+    def get_adjust_price(self, ecpm_pd, market_price, chosen_count_map, imp_count_map, norm_dict):
         """
         给定ecpm，计算最优出价
         """
@@ -78,12 +78,18 @@ class calculate_price_adjustment_gain(object):
         norm_min = norm_dict["norm_min"]
         price_list = []
         gain_list = []
-
-        for ecpm in ecpm_list:
+        # self.logging.info(f"ecpm_pd:\n{ecpm_pd.head()}")
+        for index, ecpm_meta in ecpm_pd.iterrows():
+            ecpm = ecpm_meta["response_ecpm"]
+            win_price = ecpm_meta["win_price"]
+            click_num = ecpm_meta["click_num"]
+            target_cpa = ecpm_meta["target_cpa"]
+            pay_amount = ecpm_meta["pay_amount"]
             ecpm = ecpm * (norm_max - norm_min) + norm_min
             price, gain = search_price_for_optimal_cost(self.logging, ecpm, market_price,
                                                         chosen_count_map, imp_count_map, norm_dict)
-            self.logging.info(f"ecpm:{ecpm}, price:{price}, gain:{gain}")
+            self.logging.info(f"ecpm:{ecpm}, price:{price}, gain:{gain}, win_price:{win_price}, click_num:{click_num}, "
+                              f"target_cpa:{target_cpa}, pay_amount:{pay_amount}")
             price_list.append(price)
             gain_list.append(gain)
 
