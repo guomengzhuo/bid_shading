@@ -55,14 +55,6 @@ class ReadData(object):
         self.logging.info(f"pre_95:{per_95}, median:{np.median(win_price_list)}")
         data_pd = data_pd[data_pd['response_ecpm'] <= per_95]  # 过滤 95 分位数
 
-        """
-        # 对市场价winner bid price过滤5分位数
-        tmp = data_pd[data_pd['winner_bid_price'] > 0]  # win_price>0
-        win_price_list = np.array(tmp['winner_bid_price'])
-        per_95 = np.percentile(win_price_list, 95)  # 95 分位数
-        self.logging.info(f"pre_95:{per_95}, median:{np.median(win_price_list)}")
-        data_pd = data_pd[data_pd['winner_bid_price'] <= per_95]  # 过滤 95 分位数
-        """
         self.logging.info(f"data_pd:{data_pd.head(10)}")
 
         return data_pd
