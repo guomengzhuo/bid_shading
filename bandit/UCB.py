@@ -14,6 +14,8 @@ from tools.market_price_distributed import Distributed_Image
 import copy
 from collections import defaultdict
 import matplotlib.pyplot as plt
+import os
+from datetime import datetime
 
 if Environment == "offline":
     logging.basicConfig(
@@ -400,6 +402,38 @@ class UCBBandit(object):
                                      market_price_value, impression_price_list[0],
                                      '_'.join([str(media_app_id), str(position_id)]),
                                      revenue_rate_list, sampling_chosen_count_map)
+
+        # 保存结果
+        result_list = {
+            "imp_count_map": imp_count_map,
+            "chosen_count_map": chosen_count_map,
+            "true_imp_count_map": true_imp_count_map,
+            "true_chosen_count_map": true_chosen_count_map,
+            "revenue_rate_list": revenue_rate_list,
+            "sampling_chosen_count_map": sampling_chosen_count_map,
+            "market_price_value": market_price_value,
+            "min_imp_price_value": impression_price_list[0]
+        }
+        result_dir = "./result/{}/{}".format(media_app_id, position_id)
+        if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
+
+        mhour = datetime.now().strftime("%Y%m%d%H")
+        with open(result_dir + f"/bandit_result_{mhour}.json", mode='w', encoding='utf-8') as f:
+            json.dump(result_list, f)
+
+        """ 读取结果
+        with open(result_dir + "/bandit_result.json", mode='r', encoding='utf-8') as f:
+            result_dict = json.load(f)
+            imp_count_map = result_dict["imp_count_map"]
+            chosen_count_map = result_dict["chosen_count_map"]
+            true_imp_count_map = result_dict["true_imp_count_map"]
+            true_chosen_count_map = result_dict["true_chosen_count_map"]
+            revenue_rate_list = result_dict["revenue_rate_list"]
+            sampling_chosen_count_map = result_dict["sampling_chosen_count_map"]
+            market_price_value = result_dict["market_price_value"]
+            min_imp_price_value = result_dict["min_imp_price_value"]
+        """
 
         return market_price, chosen_count_map, imp_count_map
 
