@@ -86,6 +86,7 @@ WHERE response.tdbank_imp_date is not null
     and response.media_app_id is not null
     and response.position_id is not null
     and response.creative_id is not null
+    and (impression.win_price <> 0 or rand() <= .3)  -- 对未竞得样本进行采样
     -- and (nvl(impression.win_price, 0) <> 0 or nvl(loss_win.winner_bid_price, 0) <> 0)
 
 

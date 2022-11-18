@@ -16,16 +16,17 @@ class ReadData(object):
     # 数据读取主类
     """
 
-    def __init__(self, logging, data_path=DATA_PATH):
+    def __init__(self, logging, data_path=DATA_PATH, test_data_path=TEST_DATA_PATH):
         """
         # 初始化
         """
         self.logging = logging
         self.data_path = data_path
+        self.test_data_path = test_data_path
 
-    def read_csv_data(self):
+    def read_csv_data(self, data_path):
 
-        df = pd.read_csv(self.data_path, sep="\t")
+        df = pd.read_csv(data_path, sep="\t")
         # df['pltv'] = df['pltv'].apply(pd.to_numeric, errors='coerce').fillna(0)
         # df['pctcvr'] = df['pctcvr'].apply(pd.to_numeric, errors='coerce').fillna(0.0)
         data_pd = df.astype({
@@ -114,7 +115,7 @@ class ReadData(object):
         data_pd["interval_index"] = data_pd["interval_index"].map(int)
         return data_pd, ecpm_norm_dict
 
-    def get_data_dict_struct(self, data_pd, is_imp=True):
+    def get_data_dict_struct(self, data_pd, is_test=False):
         response_dict = {}
         for index, row in data_pd.iterrows():
             # self.logging.info(f"index:{index}, row:{row}")
@@ -137,13 +138,17 @@ class ReadData(object):
             if pltv not in pltv_dict:
                 pltv_dict[pltv] = []
 
-            pltv_dict[pltv].append(value)
+            if is_test:
+                pltv_dict[pltv].append(row)
+            else:
+                pltv_dict[pltv].append(value)
+
             position_dict[position_id] = pltv_dict
             response_dict[media_app_id] = position_dict
 
         return response_dict
 
-    def get_data_dict_struct_no_pltv(self, data_pd, is_imp=True):
+    def get_data_dict_struct_no_pltv(self, data_pd, is_test=False):
         response_dict = {}
         for index, row in data_pd.iterrows():
             # self.logging.info(f"index:{index}, row:{row}")
@@ -160,8 +165,11 @@ class ReadData(object):
             position_dict = response_dict[media_app_id]
             if position_id not in position_dict:
                 position_dict[position_id] = []
+            if is_test:
+                position_dict[position_id].append(row)
+            else:
+                position_dict[position_id].append(value)
 
-            position_dict[position_id].append(value)
             response_dict[media_app_id] = position_dict
 
         return response_dict
@@ -175,17 +183,17 @@ class ReadData(object):
         norm_dict = {}
 
         # 1、获取本地数据
-        data_pd = self.read_csv_data()
+        data_pd = self.read_csv_data(self.data_path)
         data_pd = self.data_filter(data_pd)
         data_pd, ecpm_norm_dict = self.data_discret_norm(data_pd)
 
         # 2、获取response_dict
         if No_pltv:
-            imp_dict = self.get_data_dict_struct_no_pltv(data_pd[data_pd['win_price'] > 0], True)
-            no_imp_dict = self.get_data_dict_struct_no_pltv(data_pd[data_pd['win_price'] == 0], False)
+            imp_dict = self.get_data_dict_struct_no_pltv(data_pd[data_pd['win_price'] > 0])
+            no_imp_dict = self.get_data_dict_struct_no_pltv(data_pd[data_pd['win_price'] == 0])
         else:
-            imp_dict = self.get_data_dict_struct(data_pd[data_pd['win_price'] > 0], True)
-            no_imp_dict = self.get_data_dict_struct(data_pd[data_pd['win_price'] == 0], False)
+            imp_dict = self.get_data_dict_struct(data_pd[data_pd['win_price'] > 0])
+            no_imp_dict = self.get_data_dict_struct(data_pd[data_pd['win_price'] == 0])
 
         # 3、获取中位数
         for media_app_id, position_info in imp_dict.items():
@@ -257,9 +265,18 @@ class ReadData(object):
                     "market_price_list": json.dumps(list(group_pd["market_price"].groupby(cut_bins).count()))
                 }
 
+        # 5、获取本地测试数据
+        test_data_pd = self.read_csv_data(self.test_data_path)
+        test_data_pd = self.data_filter(test_data_pd)
+
+        if No_pltv:
+            test_imp_dict = self.get_data_dict_struct_no_pltv(data_pd[data_pd['win_price'] > 0], is_test=True)
+        else:
+            test_imp_dict = self.get_data_dict_struct(data_pd[data_pd['win_price'] > 0], is_test=True)
+
         self.logging.info(f"len imp_dict:{len(imp_dict)},  len no_imp_dict:{len(no_imp_dict)}, "
-                          f"len market_price_dict:{len(market_price_dict)}")
-        return market_price_dict, imp_dict, no_imp_dict, norm_dict, ecpm_norm_dict
+                          f"len market_price_dict:{len(market_price_dict)}, test_imp_dict:{len(test_imp_dict)}")
+        return market_price_dict, imp_dict, no_imp_dict, norm_dict, ecpm_norm_dict, test_imp_dict
 
     def test_data_process(self):
         """

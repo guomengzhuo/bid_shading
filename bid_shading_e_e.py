@@ -56,6 +56,7 @@ class BidShading(object):
         self.no_impression_price_dict = {}
         self.norm_dict = {}
         self.ecpm_norm_dict = {}
+        self.test_imp_dict = {}
 
         self.optimal_ratio_dict = {}
 
@@ -66,7 +67,7 @@ class BidShading(object):
         # market_price_dict = media_app_id:position_id:pltv - value
         # impression_price_dict = media_app_id:position_id:pltv - value_list
         self.market_price_dict, self.impression_price_dict, self.no_impression_price_dict,\
-            self.norm_dict, self.ecpm_norm_dict = rd.data_process()
+            self.norm_dict, self.ecpm_norm_dict, self.test_imp_dict = rd.data_process()
 
         self.logging.info(f"len market_price_dict:{len(self.market_price_dict)}, "
                           f"len impression_price_dict:{len(self.impression_price_dict)}")
