@@ -11,8 +11,6 @@ import multiprocessing
 import numpy as np
 from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, sample_ratio, Environment, No_pltv
 from tools.market_price_distributed import Distributed_Image
-
-from search.get_adjust_ratio import get_adjust_ratio
 import copy
 from collections import defaultdict
 import matplotlib.pyplot as plt
@@ -52,6 +50,7 @@ class UCBBandit(object):
         :params impression_price_dict = {pltv:value_list}
         :params no_impression_price = {pltv:value_list}  响应未曝光数据
         """
+
         # """分pltv计算"""
         if not No_pltv:
             for level in PLTV_LEVEL:
@@ -92,9 +91,9 @@ class UCBBandit(object):
                              f"len impression_price_list:{len(impression_price_list)}, "
                              f"len no_impression_price_list:{len(no_impression_price_list)}")
 
-                # 设置市场价格调整比例
-                get_adjust_ratio(logging, media_app_id, position_id, level, impression_price_list,
-                                 market_price, chosen_count_map, imp_count_map, ecpm_norm_dict, optimal_ratio_dict)
+                optimal_ratio_dict = self.save_bandit_result(media_app_id, position_id, level, impression_price_list,
+                                                             market_price, chosen_count_map, imp_count_map,
+                                                             ecpm_norm_dict, optimal_ratio_dict)
         else:
             # """计算position默认值 """
             market_price_value = round(np.mean(market_price_dict), 2)
@@ -127,9 +126,41 @@ class UCBBandit(object):
                              f"len impression_price_list:{len(impression_price_list)}, "
                              f"len no_impression_price_list:{len(no_impression_price_list)}")
 
-                # 设置市场价格调整比例
-                get_adjust_ratio(logging, media_app_id, position_id, -1, impression_price_list,
-                                 market_price, chosen_count_map, imp_count_map, ecpm_norm_dict, optimal_ratio_dict)
+                optimal_ratio_dict = self.save_bandit_result(media_app_id, position_id, -1, impression_price_list,
+                                                             market_price, chosen_count_map, imp_count_map,
+                                                             ecpm_norm_dict, optimal_ratio_dict)
+
+        return optimal_ratio_dict
+
+    def save_bandit_result(self, media_app_id, position_id, level, impression_price_list,
+                           market_price_norm, chosen_count_map, imp_count_map, ecpm_norm_dict,
+                           optimal_ratio_dict):
+
+        market_price = 0.0
+        if market_price_norm in ecpm_norm_dict:
+            market_price = ecpm_norm_dict[market_price_norm]
+
+        upper_bound = int(1.5 * market_price)
+        if len(impression_price_list) > 1:
+            max_imp_price = ecpm_norm_dict[impression_price_list[-1]]
+            upper_bound = int(max(max_imp_price * 1.1, 1.5 * market_price))
+
+        lower_bound = int(market_price * 0.9)
+
+        if level == -1:
+            key = f"{media_app_id}_{position_id}"
+        else:
+            key = f"{media_app_id}_{position_id}_{level}"
+
+        if key not in optimal_ratio_dict:
+            optimal_ratio_dict[key] = {}
+
+        optimal_ratio_dict[key]['market_price'] = market_price
+        optimal_ratio_dict[key]['upper_bound'] = upper_bound
+        optimal_ratio_dict[key]['upper_lower_boundbound'] = lower_bound
+        optimal_ratio_dict[key]['chosen_count_map'] = chosen_count_map
+        optimal_ratio_dict[key]['imp_count_map'] = imp_count_map
+        optimal_ratio_dict[key]['ecpm_norm_dict'] = ecpm_norm_dict
 
         return optimal_ratio_dict
 
@@ -427,6 +458,7 @@ class UCBBandit(object):
                     continue
 
             self.calculate_market_price(media_app_id, position_id, market_price, impression_price,
-                                        no_impression_price, norm_dict[position_id], ecpm_norm_dict, optimal_ratio_dict)
+                                        no_impression_price, norm_dict[position_id], ecpm_norm_dict,
+                                        optimal_ratio_dict)
 
         return optimal_ratio_dict

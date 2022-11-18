@@ -60,14 +60,14 @@ class BidShading(object):
 
         self.optimal_ratio_dict = {}
 
-    def read_data(self, data_path=DATA_PATH):
+    def read_data(self):
         # 1、读取 bid shading输入数据
-        rd = ReadData(logging=self.logging, data_path=data_path)
+        rd = ReadData(logging=self.logging, data_path=DATA_PATH)
 
         # market_price_dict = media_app_id:position_id:pltv - value
         # impression_price_dict = media_app_id:position_id:pltv - value_list
         self.market_price_dict, self.impression_price_dict, self.no_impression_price_dict,\
-            self.norm_dict, self.ecpm_norm_dict, self.test_imp_dict = rd.data_process()
+            self.norm_dict, self.ecpm_norm_dict = rd.data_process()
 
         self.logging.info(f"len market_price_dict:{len(self.market_price_dict)}, "
                           f"len impression_price_dict:{len(self.impression_price_dict)}")
@@ -100,7 +100,7 @@ class BidShading(object):
         bandit = UCBBandit()
 
         # 1、读取相关要处理的的数据
-        self.read_data(DATA_PATH)
+        self.read_data()
 
         re = ResultEvaluate(self.logging)
 

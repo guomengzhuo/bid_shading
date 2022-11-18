@@ -8,7 +8,7 @@ import json
 
 import numpy as np
 import pandas as pd
-from configs.config import DATA_PATH, INCREASE_RATIO, DATA_NUMS_LOWER_BOUND, No_pltv, BIN_NUMS
+from configs.config import INCREASE_RATIO, DATA_NUMS_LOWER_BOUND, No_pltv, BIN_NUMS
 
 
 class ReadData(object):
@@ -16,17 +16,16 @@ class ReadData(object):
     # 数据读取主类
     """
 
-    def __init__(self, logging, data_path=DATA_PATH, test_data_path=TEST_DATA_PATH):
+    def __init__(self, logging, data_path):
         """
         # 初始化
         """
         self.logging = logging
         self.data_path = data_path
-        self.test_data_path = test_data_path
 
-    def read_csv_data(self, data_path):
+    def read_csv_data(self):
 
-        df = pd.read_csv(data_path, sep="\t")
+        df = pd.read_csv(self.data_path, sep="\t")
         # df['pltv'] = df['pltv'].apply(pd.to_numeric, errors='coerce').fillna(0)
         # df['pctcvr'] = df['pctcvr'].apply(pd.to_numeric, errors='coerce').fillna(0.0)
         data_pd = df.astype({
@@ -183,7 +182,7 @@ class ReadData(object):
         norm_dict = {}
 
         # 1、获取本地数据
-        data_pd = self.read_csv_data(self.data_path)
+        data_pd = self.read_csv_data()
         data_pd = self.data_filter(data_pd)
         data_pd, ecpm_norm_dict = self.data_discret_norm(data_pd)
 
@@ -203,7 +202,7 @@ class ReadData(object):
             if No_pltv:
                 position_dict = market_price_dict[media_app_id]
                 for position_id, value_list in position_info.items():
-                    position_dict[position_id] =  np.median(np.array(value_list))
+                    position_dict[position_id] = np.median(np.array(value_list))
 
                 market_price_dict[media_app_id] = position_dict
             else:
@@ -265,18 +264,9 @@ class ReadData(object):
                     "market_price_list": json.dumps(list(group_pd["market_price"].groupby(cut_bins).count()))
                 }
 
-        # 5、获取本地测试数据
-        test_data_pd = self.read_csv_data(self.test_data_path)
-        test_data_pd = self.data_filter(test_data_pd)
-
-        if No_pltv:
-            test_imp_dict = self.get_data_dict_struct_no_pltv(data_pd[data_pd['win_price'] > 0], is_test=True)
-        else:
-            test_imp_dict = self.get_data_dict_struct(data_pd[data_pd['win_price'] > 0], is_test=True)
-
         self.logging.info(f"len imp_dict:{len(imp_dict)},  len no_imp_dict:{len(no_imp_dict)}, "
-                          f"len market_price_dict:{len(market_price_dict)}, test_imp_dict:{len(test_imp_dict)}")
-        return market_price_dict, imp_dict, no_imp_dict, norm_dict, ecpm_norm_dict, test_imp_dict
+                          f"len market_price_dict:{len(market_price_dict)}")
+        return market_price_dict, imp_dict, no_imp_dict, norm_dict, ecpm_norm_dict,
 
     def test_data_process(self):
         """
