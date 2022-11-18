@@ -42,8 +42,7 @@ class UCBBandit(object):
         """
 
     def calculate_market_price(self, media_app_id, position_id, market_price_dict,
-                               impression_price_dict, no_impression_price, norm_dict,
-                               ecpm_norm_dict, optimal_ratio_dict):
+                               impression_price_dict, no_impression_price, norm_dict, optimal_ratio_dict):
         """
         计算市场价格
         :params market_price_dict = {pltv:value}
@@ -93,7 +92,7 @@ class UCBBandit(object):
 
                 optimal_ratio_dict = self.save_bandit_result(media_app_id, position_id, level, impression_price_list,
                                                              market_price, chosen_count_map, imp_count_map,
-                                                             ecpm_norm_dict, optimal_ratio_dict)
+                                                             norm_dict, optimal_ratio_dict)
         else:
             # """计算position默认值 """
             market_price_value = round(np.mean(market_price_dict), 2)
@@ -128,21 +127,21 @@ class UCBBandit(object):
 
                 optimal_ratio_dict = self.save_bandit_result(media_app_id, position_id, -1, impression_price_list,
                                                              market_price, chosen_count_map, imp_count_map,
-                                                             ecpm_norm_dict, optimal_ratio_dict)
+                                                             norm_dict, optimal_ratio_dict)
 
         return optimal_ratio_dict
 
     def save_bandit_result(self, media_app_id, position_id, level, impression_price_list,
-                           market_price_norm, chosen_count_map, imp_count_map, ecpm_norm_dict,
+                           market_price_norm, chosen_count_map, imp_count_map, norm_dict,
                            optimal_ratio_dict):
 
-        market_price = 0.0
-        if market_price_norm in ecpm_norm_dict:
-            market_price = ecpm_norm_dict[market_price_norm]
+        norm_max = norm_dict[position_id]["norm_max"]
+        norm_min = norm_dict[position_id]["norm_min"]
+        market_price = market_price_norm * (norm_max - norm_min) + norm_min
 
         upper_bound = int(1.5 * market_price)
         if len(impression_price_list) > 1:
-            max_imp_price = ecpm_norm_dict[impression_price_list[-1]]
+            max_imp_price = impression_price_list[-1] * (norm_max - norm_min) + norm_min
             upper_bound = int(max(max_imp_price * 1.1, 1.5 * market_price))
 
         lower_bound = int(market_price * 0.9)
@@ -160,7 +159,7 @@ class UCBBandit(object):
         optimal_ratio_dict[key]['upper_lower_boundbound'] = lower_bound
         optimal_ratio_dict[key]['chosen_count_map'] = chosen_count_map
         optimal_ratio_dict[key]['imp_count_map'] = imp_count_map
-        optimal_ratio_dict[key]['ecpm_norm_dict'] = ecpm_norm_dict
+        optimal_ratio_dict[key]['norm_dict'] = norm_dict[position_id]
 
         return optimal_ratio_dict
 
@@ -414,7 +413,7 @@ class UCBBandit(object):
         return market_price, chosen_count_map, imp_count_map
 
     def do_process(self, media_app_id, media_position_dict_obj, market_price_dict_obj, impression_price_dict_obj,
-                   no_impression_obj, norm_dict, ecpm_norm_dict):
+                   no_impression_obj, norm_dict):
         """
         根据读取的数据，计算bid shading系数，输出至redis
         :return:
@@ -457,7 +456,6 @@ class UCBBandit(object):
                     continue
 
             self.calculate_market_price(media_app_id, position_id, market_price, impression_price,
-                                        no_impression_price, norm_dict[position_id], ecpm_norm_dict,
-                                        optimal_ratio_dict)
+                                        no_impression_price, norm_dict[position_id], optimal_ratio_dict)
 
         return optimal_ratio_dict
