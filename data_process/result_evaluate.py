@@ -73,15 +73,15 @@ class ResultEvaluate(object):
             chosen_count_map = result_dict["chosen_count_map"]
             imp_count_map = result_dict["imp_count_map"]
             norm_dict = result_dict["norm_dict"]
-            price, gain = self.cal_price_adjustment_gain.get_adjust_price(test_pd[["response_ecpm", "win_price",
-                                                                                   "click_num",
-                                                                                   "target_cpa", "pay_amount"]],
-                                                                          market_price,
-                                                                          chosen_count_map,
-                                                                          imp_count_map, norm_dict)
+            price, opt_gain, before_gain \
+                = self.cal_price_adjustment_gain.get_adjust_price(test_pd[["response_ecpm", "win_price", "click_num",
+                                                                           "target_cpa", "pay_amount"]],
+                                                                  market_price, chosen_count_map,
+                                                                  imp_count_map, norm_dict)
 
             test_pd["shading_ecpm"] = price
-            test_pd["income"] = gain
+            test_pd["income"] = opt_gain
+            test_pd["before_income"] = before_gain
             test_pd["label_before"] = np.select([
                 (test_pd["response_ecpm"] >= test_pd["target_price"])],
                 [test_pd["response_ecpm"]], default=0)

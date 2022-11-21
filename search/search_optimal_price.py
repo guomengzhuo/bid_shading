@@ -28,7 +28,9 @@ def search_price_for_optimal_cost(logging, ecpm, market_price, chosen_count_map,
     通过最大化∑win_rate * (ecpm-price), 找到最优出价点
     """
     opt_price = 1.0
-    gain = 0
+    opt_gain = 0
+    before_gain = 0
+    gap = ecpm
     norm_max = norm_dict["norm_max"]
     norm_min = norm_dict["norm_min"]
     win_rate_dict = {}
@@ -42,48 +44,55 @@ def search_price_for_optimal_cost(logging, ecpm, market_price, chosen_count_map,
         price = price * (norm_max - norm_min) + norm_min
         win_rate = imp_count * 1.0 / chosen_count
         win_rate_dict[price] = win_rate
+        if gap > abs(price - ecpm):
+            gap = abs(price - ecpm)
+            before_gain = win_rate * (gmv - ecpm)
+
         expect_gain = win_rate * (ecpm - price)
-        if expect_gain > gain:
-            gain = expect_gain
+        if expect_gain > opt_gain:
+            opt_gain = expect_gain
             opt_price = price
 
     opt_price = round(opt_price, 4)
 
-    logging.info(f"market_price:{market_price}, opt_price:{opt_price}, ecpm:{ecpm}, gain:{gain},"
-                 f"win_rate_dict:{win_rate_dict}")
-    return opt_price, gain
+    logging.info(f"market_price:{market_price}, opt_price:{opt_price}, ecpm:{ecpm}, opt_gain:{opt_gain},"
+                 f" ,before_gain:{before_gain}, win_rate_dict:{win_rate_dict}")
+    return opt_price, opt_gain, before_gain
 
 
-def search_price_for_optimal_income(logging, ecpm, market_price, upper_bound, chosen_count_map,
-                                    imp_count_map, ecpm_norm_dict):
+def search_price_for_optimal_income(logging, ecpm, market_price, gmv, chosen_count_map,
+                                    imp_count_map, norm_dict):
     """
     目标是最大化收益，income包括两部分 1、gmv; 2、本次出价节省的钱 (ecpm - price)
     通过最大化∑(win_rate * ROI) = ∑(win_rate * （gmv + ecpm - price）/price), 找到最优出价点
     其中 gmv = bid_price * win_rate
     """
-    ratio = 1.0
-    gain = 0
-    opt_price = 0
+    opt_price = 1.0
+    opt_gain = 0
+    before_gain = 0
+    norm_max = norm_dict["norm_max"]
+    norm_min = norm_dict["norm_min"]
+    gap = ecpm
     win_rate_dict = {}
     for price, chosen_count in chosen_count_map.items():
         if chosen_count < 1 or price not in imp_count_map:
             continue
 
         imp_count = imp_count_map[price]
-
-        # 最大化 impression_rate * (ecpm - price)
-        price = ecpm_norm_dict[price]
+        price = price * (norm_max - norm_min) + norm_min
         win_rate = imp_count * 1.0 / chosen_count
         win_rate_dict[price] = win_rate
-        expect_gain = win_rate * (ecpm - price)
-        if expect_gain > gain:
-            gain = expect_gain
-            ratio = price * 1.0 / ecpm
+        expect_gain = win_rate * (gmv - price)
+        if gap > abs(price - ecpm):
+            gap = abs(price - ecpm)
+            before_gain = win_rate * (gmv - ecpm)
+
+        if expect_gain > opt_gain:
+            opt_gain = expect_gain
             opt_price = price
 
-    gain = max(0, price * (1 - ratio))
-    ratio = round(ratio, 4)
+    opt_price = round(opt_price, 4)
+    # logging.info(f"market_price:{market_price}, opt_price:{opt_price}, ecpm:{ecpm}, opt_gain:{opt_gain},"
+    #              f" before_gain:{before_gain}, win_rate_dict:{win_rate_dict}")
 
-    logging.info(f"market_price:{market_price}, opt_price:{opt_price}, ecpm:{ecpm}, ratio:{ratio}, gain:{gain},"
-                 f" upper_bound:{upper_bound}, win_rate_dict:{win_rate_dict}")
-    return ratio, gain
+    return opt_price, opt_gain, before_gain
