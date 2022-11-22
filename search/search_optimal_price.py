@@ -18,7 +18,7 @@ max(∑(p(b*)(E(income) - b*)) - ecpm_income) -> max(∑(p(b*)(E(income) - b*)))
 
 思考点：如果兼顾挣钱的同时考虑省钱因素
 
-
+search 过程使用先验， 评估过程使用 后验数据
 
 """
 

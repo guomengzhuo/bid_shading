@@ -294,7 +294,6 @@ class UCBBandit(object):
                 is_win = np.random.binomial(1, sample_rate)
                 index = price_list.index(max_probs_key)
 
-
                 count = 0
                 if is_win == 1:
                     # 选择的max_probs_key能曝光，向左搜索（减价）
