@@ -30,7 +30,6 @@ def search_price_for_optimal_cost(logging, ecpm, market_price, chosen_count_map,
     opt_price = 1.0
     opt_gain = 0
     before_gain = 0
-    gap = ecpm
     norm_max = norm_dict["norm_max"]
     norm_min = norm_dict["norm_min"]
     win_rate_dict = {}
@@ -44,10 +43,6 @@ def search_price_for_optimal_cost(logging, ecpm, market_price, chosen_count_map,
         price = price * (norm_max - norm_min) + norm_min
         win_rate = imp_count * 1.0 / chosen_count
         win_rate_dict[price] = win_rate
-        if gap > abs(price - ecpm):
-            gap = abs(price - ecpm)
-            before_gain = win_rate * (gmv - ecpm)
-
         expect_gain = win_rate * (ecpm - price)
         if expect_gain > opt_gain:
             opt_gain = expect_gain

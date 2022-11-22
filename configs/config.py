@@ -13,7 +13,7 @@ DATA_PATH = './data/bid_shading_QB_2022102118_2022102120.txt'
 TEST_DATA_PATH = './data/bid_shading_QB_2022102121_2022102121.txt'
 
 # 选择最优化的方式
-OPTIMAL_COST = False
+OPTIMAL_COST = True
 
 # 测试时的提价比例
 INCREASE_RATIO = 1.5
