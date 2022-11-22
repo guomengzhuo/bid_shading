@@ -101,9 +101,16 @@ class Distributed_Image(object):
                     .format(media_app_id, position_id))
         plt.show()
 
+        # 绘制 reward ratio 变化曲线
+        sample_index = 0
+        sample_revenue_rate_list = {}
+        while sample_index * 1000 < len(revenue_rate_list):
+            sample_revenue_rate_list[sample_index * 1000] = revenue_rate_list[sample_index * 1000]
+            sample_index += 1
+
         plt.figure(dpi=300)
         plt.title("{} reward ratio".format(name))
-        plt.scatter(list(range(len(revenue_rate_list))), revenue_rate_list, s=5, alpha=0.5)
+        plt.scatter(sample_revenue_rate_list.keys(), sample_revenue_rate_list.values(), s=5)
 
         plt.savefig(figure_dir + "/reward_ratio_media_{}_position_{}.png"
                     .format(media_app_id, position_id))

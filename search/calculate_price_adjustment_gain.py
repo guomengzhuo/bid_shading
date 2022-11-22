@@ -87,7 +87,7 @@ class calculate_price_adjustment_gain(object):
             click_num = ecpm_meta["click_num"]
             target_cpa = ecpm_meta["target_cpa"]
             pay_amount = ecpm_meta["pay_amount"]
-            ecpm = ecpm * (norm_max - norm_min) + norm_min
+            # ecpm = ecpm * (norm_max - norm_min) + norm_min
             if OPTIMAL_COST:
                 price, opt_gain, before_gain = search_price_for_optimal_cost(self.logging, ecpm, market_price,
                                                             chosen_count_map, imp_count_map, norm_dict)
