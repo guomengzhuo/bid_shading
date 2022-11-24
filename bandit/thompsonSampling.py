@@ -1,0 +1,574 @@
+# -*- coding: utf-8 -*-
+# @Time    : 2022/11/22 10:09
+# @Author  : biglongyuan
+# @Site    : 
+# @File    : thompsonSampling.py
+# @Software: PyCharm
+# 参考：https://www.aionlinecourse.com/tutorial/machine-learning/thompson-sampling-intuition
+
+
+import json
+import logging
+import math
+import multiprocessing
+import numpy as np
+from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, sample_ratio, Environment, No_pltv
+from tools.market_price_distributed import Distributed_Image
+import copy
+from collections import defaultdict
+import matplotlib.pyplot as plt
+import os
+from scipy.stats import beta
+from datetime import datetime
+from arm.bernoulliArm import bernoulliArm
+
+if Environment == "offline":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d ]in %(funcName)-8s  %(message)s"
+    )
+else:
+    logging.basicConfig(
+        filename=os.path.join(os.getcwd(),
+                              "./log/" + __file__.split(".")[0] + datetime.datetime.strftime(datetime.datetime.today(),
+                                                                                             "_%Y%m%d") + ".log"),
+        level=logging.INFO,
+        filemode="a+",
+        format="%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d ]in %(funcName)-8s  %(message)s"
+    )
+
+
+class ThompsonSamplingBandit(object):
+    """
+    bid shading 主类
+    """
+
+    def __init__(self):
+        """
+        初始化
+        """
+
+    def calculate_market_price(self, media_app_id, position_id, market_price_dict,
+                               impression_price_dict, no_impression_price, norm_dict, optimal_ratio_dict):
+        """
+        计算市场价格
+        :params market_price_dict = {pltv:value}
+        :params impression_price_dict = {pltv:value_list}
+        :params no_impression_price = {pltv:value_list}  响应未曝光数据
+        """
+
+        # """分pltv计算"""
+        if not No_pltv:
+            for level in PLTV_LEVEL:
+                market_price_value = -1.0
+                impression_price_list = []
+                no_impression_price_list = []
+                if level in market_price_dict:
+                    market_price_value = market_price_dict[level]
+
+                if level in impression_price_dict:
+                    impression_price_list = sorted(impression_price_dict[level], reverse=False)
+
+                if level in no_impression_price:
+                    no_impression_price_list = sorted(no_impression_price[level], reverse=False)
+
+                if market_price_value == -1.0 or len(impression_price_list) < 100:
+                    # TODO market_price_value 使用的媒体回传数据，要限制大小？
+                    logging.debug(f"proc_id={multiprocessing.current_process().name},"
+                                  f"media_app_id:{media_app_id}, position_id:{position_id}, level:{level},"
+                                  f"len(impression_price_list):{len(impression_price_list)} < 10, data is sparse "
+                                  f"enough to compute")
+                    continue
+
+                # e-e
+                # market_price 市场价格
+                # chosen_count_map = {}  # 记录选择次数
+                # imp_count_map = {}  # 记录曝光次数
+                market_price, chosen_count_map, imp_count_map = self.bandit(media_app_id,
+                                                                            position_id,
+                                                                            norm_dict[level],
+                                                                            market_price_value,
+                                                                            impression_price_list,
+                                                                            no_impression_price_list)
+
+                logging.info(f"proc_id={multiprocessing.current_process().name},"
+                             f"media_app_id:{media_app_id}, position_id:{position_id}, level:{level}, "
+                             f"history_median_price_value:{market_price_value}, market_price:{market_price}，"
+                             f"len impression_price_list:{len(impression_price_list)}, "
+                             f"len no_impression_price_list:{len(no_impression_price_list)}")
+
+                optimal_ratio_dict = self.save_bandit_result(media_app_id, position_id, level,
+                                                             market_price, chosen_count_map, imp_count_map,
+                                                             norm_dict, optimal_ratio_dict)
+        else:
+            # """计算position默认值 """
+            market_price_value = round(np.mean(market_price_dict), 2)
+            impression_price_list = impression_price_dict
+            no_impression_price_list = no_impression_price
+            impression_price_list = sorted(impression_price_list, reverse=False)
+            no_impression_price_list = sorted(no_impression_price_list, reverse=False)
+
+            if market_price_value == -1.0 or len(impression_price_list) < 100:
+                # TODO market_price_value 使用的媒体回传数据，要限制大小？
+                logging.debug(f"proc_id={multiprocessing.current_process().name},"
+                              f"media_app_id:{media_app_id}, position_id:{position_id}, level: None,"
+                              f"len(impression_price_list):{len(impression_price_list)} < 10, data is sparse "
+                              f"enough to compute")
+            else:
+                # e-e
+                # market_price 市场价格
+                # chosen_count_map = {}  # 记录选择次数
+                # imp_count_map = {}  # 记录曝光次数
+                market_price, chosen_count_map, imp_count_map = self.bandit(media_app_id,
+                                                                            position_id,
+                                                                            norm_dict,
+                                                                            market_price_value,
+                                                                            impression_price_list,
+                                                                            no_impression_price_list)
+
+                logging.info(f"calculate default data proc_id={multiprocessing.current_process().name},"
+                             f"media_app_id:{media_app_id}, position_id:{position_id},"
+                             f"history_median_price_value:{market_price_value}, market_price:{market_price}，"
+                             f"len impression_price_list:{len(impression_price_list)}, "
+                             f"len no_impression_price_list:{len(no_impression_price_list)}")
+
+                optimal_ratio_dict = self.save_bandit_result(media_app_id, position_id, -1,
+                                                             market_price, chosen_count_map, imp_count_map,
+                                                             norm_dict, optimal_ratio_dict)
+
+        return optimal_ratio_dict
+
+    def save_bandit_result(self, media_app_id, position_id, level,
+                           market_price_norm, chosen_count_map, imp_count_map, norm_dict,
+                           optimal_ratio_dict):
+
+        norm_max = norm_dict["norm_max"]
+        norm_min = norm_dict["norm_min"]
+        market_price = market_price_norm * (norm_max - norm_min) + norm_min
+
+        if level == -1:
+            key = f"{media_app_id}_{position_id}"
+        else:
+            key = f"{media_app_id}_{position_id}_{level}"
+
+        if key not in optimal_ratio_dict:
+            optimal_ratio_dict[key] = {}
+
+        optimal_ratio_dict[key]['market_price'] = market_price
+        optimal_ratio_dict[key]['chosen_count_map'] = chosen_count_map
+        optimal_ratio_dict[key]['imp_count_map'] = imp_count_map
+        optimal_ratio_dict[key]['norm_dict'] = norm_dict
+
+        return optimal_ratio_dict
+
+    def calculate_delta(self, total_count, k_chosen_count):
+        # total_count->目前的试验次数，k_chosen_count->是这个臂被试次数
+        if total_count == 0:
+            return 0
+
+        if k_chosen_count < 1:
+            k_chosen_count = 1
+
+        return math.sqrt(2 * math.log(total_count) / float(k_chosen_count))
+
+    def calculate_reward_weigth(self, price, market_price_value, right_range, left_range):
+        """
+        计算reward权重
+        """
+        reward = 0.01
+        if market_price_value * 0.9 < price <= market_price_value * 1.1:
+            reward = 0.9
+        elif price > market_price_value * 1.1:
+            reward = 1 - ((price - market_price_value) / right_range)
+            if reward > 0.9:
+                reward = 0.9
+        else:
+            reward = 1 - ((market_price_value - price) / left_range)
+            if reward > 0.9:
+                reward = 0.9
+
+        return reward
+
+    def calculate_reward_weigt_quadratic(self, price, market_price_value):
+        """
+        计算reward权重
+        """
+        reward = 1 - (price - market_price_value) ** 2
+
+        return reward
+
+    def bandit_init(self, impression_price_list, no_impression_price_list, market_price_value):
+        """
+        # bandit 初始化
+        """
+        estimared_rewards_map = {}  # 记录reward
+        chosen_count_map = {}  # 记录选择次数
+        imp_count_map = {}  # 记录曝光次数
+
+        # right_range = max(abs(impression_price_list[-1] - market_price_value), 1)
+        # left_range = max(abs(market_price_value - impression_price_list[0]), 1)
+
+        # 步骤1：初始化
+        for price in impression_price_list:  # 曝光数据
+            if price not in chosen_count_map:
+                chosen_count_map[price] = 1
+            else:
+                chosen_count_map[price] += 1
+
+            if price not in imp_count_map:  # 响应有曝光
+                imp_count_map[price] = 1
+            else:
+                imp_count_map[price] += 1
+
+        for price in no_impression_price_list:  # 响应未曝光
+            # price_set.add(price)
+            if price not in chosen_count_map:
+                chosen_count_map[price] = 1
+            else:
+                chosen_count_map[price] += 1
+
+        for price in chosen_count_map.keys():
+            rate = 0.0
+            if price in imp_count_map:
+                rate = float(imp_count_map[price]) / chosen_count_map[price]
+
+            estimared_rewards_map[price] = rate * self.calculate_reward_weigt_quadratic(price, market_price_value)
+        return chosen_count_map, imp_count_map, estimared_rewards_map
+
+    def select_arm(self, a, b):
+        """
+        Thompson Sampling selection of arm for each round
+        """
+        # Pair up all beta params of a and b for each arm
+        beta_params = zip(a, b)
+
+        # Perform random draw for all arms based on their params (a,b)
+        all_draws = [beta.rvs(i[0], i[1], size=1) for i in beta_params]
+
+        # return index of arm with the highest draw
+        return all_draws.index(max(all_draws))
+
+    def update(self, chosen_count_map, estimared_rewards_map, chones_arm, reward, a, b):
+        """
+        chose to update chosen arm and reward
+        """
+        # update counts pulled for chonsen arm
+        chosen_count_mapp[chones_arm] += 1
+        n = chosen_count_map[chones_arm]
+
+        # Update average/mean value/reward for chosen arm
+        value = estimared_rewards_map[chones_arm]
+        new_value = ((n-1)*value + reward) / float(n)
+        estimared_rewards_map[chones_arm] = new_value
+
+        # Update a and b
+        # a is based on total counts of reward of arm
+        a[chones_arm] += reward
+
+        # b is based on total counts of failed rewards on arm
+        b[chones_arm] += (1-reward)
+
+        return chosen_count_map, estimared_rewards_map, a, b
+
+    def thompson_sampling_initialize(self, n_arms):
+        """
+        Initialise k number of arms
+        """
+        counts = [0 for col in range(n_arms)]
+        values = [0 for col in range(n_arms)]
+
+        # Uiform distribution of prior beta(A, B)
+        a = [1 for arm in range(n_arms)]
+        b = [1 for arm in range(n_arms)]
+
+        return counts, values, a, b
+
+    def thompson_sampling_calculate(self, arms, num_sims, horizon):
+        """
+        Initialise variables for duration of accumulated simulation (num_sims * horizon_per_simulation)
+        """
+        cal_size = num_sims * horizon
+        chosen_arms = [0.0 for i in range(cal_size)]
+        rewards = [0.0 for i in range(cal_size)]
+        cumulative_rewards = [0 for i in range(cal_size)]
+        sim_nums = [0.0 for i in range(cal_size)]
+        times = [0.0 for i in range(cal_size)]
+
+        for sim in range(sim_nums):
+            sim += 1
+            counts, values, a, b = self.thompson_sampling_initialize(len(arms))
+
+            for t in range(horizon):
+                t += 1
+                index = (sim - 1) * horizon + t - 1
+                sim_nums[index] = sim
+                times[index] = t
+
+                # Selection of best arm and engaging it
+                chosen_arm = self.select_arm(a, b)
+                chosen_arms[index] = chosen_arm
+
+                # Engage chosen Bernoulli Arm and obtain reward info
+                reward = arms[chosen_arm].draw()
+                rewards[index] = reward
+
+                if t == 1:
+                    cumulative_rewards[index] = reward
+                else:
+                    cumulative_rewards[index] = cumulative_rewards[index - 1] + reward
+
+                self.update(counts, values, chones_arm, reward, a, b)
+
+    def bandit(self, media_app_id, position_id, norm_dict, market_price_value,
+               impression_price_list, no_impression_price_list):
+        """
+        e-e探索 thompson sampling方式
+        """
+        Dis_Image = Distributed_Image(logging)
+        # 步骤1：初始化
+        chosen_count_map, imp_count_map, estimared_rewards_map = self.bandit_init(impression_price_list,
+                                                                                  no_impression_price_list,
+                                                                                  market_price_value)
+
+        true_chosen_count_map = copy.deepcopy(chosen_count_map)
+        true_imp_count_map = copy.deepcopy(imp_count_map)
+
+        # 步骤2：选top
+        chosen_key_set = list(chosen_count_map.keys())
+        if len(chosen_count_map) > max_search_num:
+            # 为了减少计算时间只取top max_search_num 进行计算
+            chosen_count_sorted = sorted(chosen_count_map.items(), key=lambda kv: (kv[1], kv[0]), reverse=True)
+            chosen_key_set = set((i[0] for i in chosen_count_sorted[:max_search_num]))
+
+        price_list = list(chosen_key_set)
+        price_list = sorted(price_list, reverse=False)
+        len_price_list = len(price_list)
+
+        # 步骤3： bandit 计算
+        """      
+        先验 + 模拟（played）的总计数：
+            chosen_count_map: played nums，用于计算alpha，beta
+            imp_count_map: success nms，用于计算alpha，beta
+        模拟（pull）计数：
+            sampling_chosen_count_map: pull nums，用于计算thompson sampling
+        type A更新计数：
+            type_a_update: k > market_price --> k is played && imp[k] += 1，作为reward的分母
+        """
+        sampling_chosen_count_map = {}
+        revenue_rate_list = []
+        type_a_update = defaultdict(int)
+
+        search_count_set = []
+
+        num_sims = min(sum(chosen_count_map.values()) * sample_ratio, max_sampling_freq)
+
+        for sim in range(num_sims):
+            beta_rvs_best = 0.0
+            max_probs_key = 0
+            total_count = sum(sampling_chosen_count_map.values())
+            sim += 1
+            # 步骤3：1、select arms
+            for k in chosen_key_set:
+                sampling_count = 0
+                if k in sampling_chosen_count_map:
+                    sampling_count += sampling_chosen_count_map[k]
+
+                # 计算I
+                if k in imp_count_map:
+                    alpha = max(imp_count_map[k], 1)
+                    beta = max(chosen_count_map[k] - imp_count_map[k], 1)
+                else:
+                    alpha = 1
+                    beta = max(chosen_count_map[k], 1)
+
+                # Perform random draw for all arms based on their params (a,b)
+                beta_rvs = beta.rvs(alpha, beta, size=1)
+                if beta_rvs_best < beta_rvs:
+                    beta_rvs_best = beta_rvs
+                    max_probs_key = k
+
+            # 记录上一轮的reward ratio
+            revenue_rate_list.append(beta_rvs_best)
+
+            if max_probs_key == 0:
+                continue
+
+            if max_probs_key not in sampling_chosen_count_map:
+                sampling_chosen_count_map[max_probs_key] = 0
+            sampling_chosen_count_map[max_probs_key] += 1
+
+            # 步骤3：update
+            if max_probs_key in imp_count_map:
+                # np.random.randn(1)[0] -> 改为基于历史数据的采样
+                # beta 先验  float(imp_count_map[max_probs_key]) / chosen_count_map[max_probs_key]
+                sample_rate = np.random.beta(imp_count_map[max_probs_key],
+                                             max(chosen_count_map[max_probs_key] - imp_count_map[max_probs_key], 1))
+                is_win = np.random.binomial(1, sample_rate)
+                index = price_list.index(max_probs_key)
+
+                count = 0
+                if is_win == 1:
+                    # 选择的max_probs_key能曝光，向左搜索（减价）
+                    index = price_list.index(max_probs_key)
+                    index -= 1
+                    while index >= 0:
+
+                        count -= 1
+
+                        tmp_price = price_list[index]
+                        if tmp_price not in imp_count_map or imp_count_map[tmp_price] < 1 \
+                                or chosen_count_map[tmp_price] - imp_count_map[tmp_price] < 1:
+                            break
+
+                        sample_rate = np.random.beta(imp_count_map[tmp_price],
+                                                     chosen_count_map[tmp_price] - imp_count_map[tmp_price])
+                        is_win = np.random.binomial(1, sample_rate)
+                        if is_win == 1:
+                            # 向小于方向探索
+                            index -= 1
+                        else:
+                            break
+
+                    index += 1
+                else:
+                    # 选择的max_probs_key不能曝光，向右搜索（加价）
+                    index += 1
+                    while index < len_price_list:
+
+                        count += 1
+
+                        tmp_price = price_list[index]
+                        if tmp_price not in imp_count_map or imp_count_map[tmp_price] < 1 \
+                                or chosen_count_map[tmp_price] - imp_count_map[tmp_price] < 1:
+                            break
+
+                        sample_rate = np.random.beta(imp_count_map[tmp_price],
+                                                     chosen_count_map[tmp_price] - imp_count_map[tmp_price])
+                        is_win = np.random.binomial(1, sample_rate)
+                        if is_win != 1:
+                            # 向大于方向探索
+                            index += 1
+                        else:
+                            break
+
+                    index -= 1
+
+                search_count_set.append(count)
+
+                min_market_price = price_list[index]
+                for x in chosen_key_set:
+                    chosen_count_map[x] += 1
+                    if x >= min_market_price:
+                        type_a_update[x] += 1
+                        if x not in imp_count_map.keys():
+                            imp_count_map[x] = 0
+                        imp_count_map[x] += 1  # if x == max_probs_key else 0.1
+
+                        weight = self.calculate_reward_weigt_quadratic(x, min_market_price)
+                        estimared_rewards_map[x] += 1 * weight
+
+        # 取reward最大值
+        market_price = 0
+        market_price_score = 0.0
+        for price, value in estimared_rewards_map.items():
+            if value > market_price_score:
+                market_price_score = value
+                market_price = price
+            estimared_rewards_map[price] = value / max_sampling_freq
+
+        # Dis_Image.win_rate_image(market_price_value, imp_count_map, chosen_count_map, impression_price_list[0])
+
+        for x in chosen_count_map.keys():
+            if x in true_imp_count_map:
+                imp_count_map[x] = imp_count_map[x] - true_imp_count_map[x]
+            chosen_count_map[x] = chosen_count_map[x] - true_chosen_count_map[x]
+
+        # s = np.array(search_count_set)
+        # print(max(s), min(s), np.mean(s), np.std(s))
+
+        Dis_Image.true_pred_win_rate(imp_count_map, chosen_count_map, true_imp_count_map, true_chosen_count_map,
+                                     market_price_value, impression_price_list[0],
+                                     '_'.join([str(media_app_id), str(position_id)]),
+                                     revenue_rate_list, sampling_chosen_count_map)
+
+        # 保存结果
+        result_list = {
+            "imp_count_map": imp_count_map,
+            "chosen_count_map": chosen_count_map,
+            "true_imp_count_map": true_imp_count_map,
+            "true_chosen_count_map": true_chosen_count_map,
+            "revenue_rate_list": revenue_rate_list,
+            "sampling_chosen_count_map": sampling_chosen_count_map,
+            "market_price_value": market_price_value,
+            "min_imp_price_value": impression_price_list[0]
+        }
+        result_dir = "./result/{}/{}".format(media_app_id, position_id)
+        if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
+
+        mhour = datetime.now().strftime("%Y%m%d%H")
+        with open(result_dir + f"/bandit_result_{mhour}.json", mode='w', encoding='utf-8') as f:
+            json.dump(result_list, f)
+
+        """ 读取结果
+        with open(result_dir + "/bandit_result.json", mode='r', encoding='utf-8') as f:
+            result_dict = json.load(f)
+            imp_count_map = result_dict["imp_count_map"]
+            chosen_count_map = result_dict["chosen_count_map"]
+            true_imp_count_map = result_dict["true_imp_count_map"]
+            true_chosen_count_map = result_dict["true_chosen_count_map"]
+            revenue_rate_list = result_dict["revenue_rate_list"]
+            sampling_chosen_count_map = result_dict["sampling_chosen_count_map"]
+            market_price_value = result_dict["market_price_value"]
+            min_imp_price_value = result_dict["min_imp_price_value"]
+        """
+
+        return market_price, chosen_count_map, imp_count_map
+
+    def do_process(self, media_app_id, media_position_dict_obj, market_price_dict_obj, impression_price_dict_obj,
+                   no_impression_obj, norm_dict):
+        """
+        根据读取的数据，计算bid shading系数，输出至redis
+        :return:
+        """
+        optimal_ratio_dict = {}
+
+        if media_app_id not in media_position_dict_obj:
+            return optimal_ratio_dict
+
+        position_set = media_position_dict_obj[media_app_id]
+
+        logging.info(f"proc_id={multiprocessing.current_process().name}, "
+                     f"media_app_id:{media_app_id}, position_set:{position_set}")
+
+        for position_id in position_set:
+            # self.market_price_dict = media_app_id:position_id:pltv - value
+            market_price = {}
+            if media_app_id in market_price_dict_obj \
+                    and position_id in market_price_dict_obj[media_app_id]:
+                market_price = market_price_dict_obj[media_app_id][position_id]
+
+            # self.impression_price_dict = media_app_id:position_id:pltv - value_list
+            impression_price = {}
+            if media_app_id in impression_price_dict_obj \
+                    and position_id in impression_price_dict_obj[media_app_id]:
+                impression_price = impression_price_dict_obj[media_app_id][position_id]
+
+            # self.impression_price_dict = media_app_id:position_id:pltv - value_list
+            no_impression_price = {}
+            if media_app_id in no_impression_obj \
+                    and position_id in no_impression_obj[media_app_id]:
+                no_impression_price = no_impression_obj[media_app_id][position_id]
+
+            if not No_pltv:
+                if len(market_price) < 1 or len(impression_price) < 1 or len(no_impression_price) < 1:
+                    # 数据不合格跳过
+                    logging.info(f"len(market_price):{len(market_price)} < 1 "
+                                 f"or len(impression_price):{len(impression_price)} < 1 "
+                                 f"or len(no_impression_price):{len(no_impression_price)} < 1")
+                    continue
+
+            self.calculate_market_price(media_app_id, position_id, market_price, impression_price,
+                                        no_impression_price, norm_dict[position_id], optimal_ratio_dict)
+
+        return optimal_ratio_dict
