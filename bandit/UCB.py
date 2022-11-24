@@ -414,12 +414,12 @@ class UCBBandit(object):
             "market_price_value": market_price_value,
             "min_imp_price_value": impression_price_list[0]
         }
-        result_dir = "./result/{}/{}".format(media_app_id, position_id)
+        result_dir = "./result/{}".format(media_app_id)
         if not os.path.exists(result_dir):
             os.makedirs(result_dir)
 
         mhour = datetime.now().strftime("%Y%m%d%H")
-        with open(result_dir + f"/bandit_result_{mhour}.json", mode='w', encoding='utf-8') as f:
+        with open(result_dir + f"/bandit_result_{mhour}_{position_id}.json", mode='w', encoding='utf-8') as f:
             json.dump(result_list, f)
 
         """ 读取结果
