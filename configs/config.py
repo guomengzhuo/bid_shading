@@ -9,8 +9,10 @@ Environment = "offline"
 Multi_Process = False
 No_pltv = True
 search_test = False
-DATA_PATH = './data/bid_shading_QB_2022102118_2022102120.txt'
-TEST_DATA_PATH = './data/bid_shading_QB_2022102121_2022102121.txt'
+# DATA_PATH = './data/bid_shading_QB_2022102118_2022102120.txt'
+# TEST_DATA_PATH = './data/bid_shading_QB_2022102121_2022102121.txt'
+DATA_PATH = './data/bid_shading_xmly_2022102009_2022102020.txt'
+TEST_DATA_PATH = './data/bid_shading_xmly_2022102109_2022102120.txt'
 
 # 选择最优化的方式
 OPTIMAL_COST = True

@@ -7,6 +7,9 @@
 
 import numpy as np
 import pandas as pd
+import os
+import json
+from datetime import datetime
 from configs.config import TEST_DATA_PATH, No_pltv, ratio_step
 from data_process.read_data import ReadData
 from search.calculate_price_adjustment_gain import calculate_price_adjustment_gain
@@ -79,41 +82,48 @@ class ResultEvaluate(object):
                                                                   market_price, chosen_count_map,
                                                                   imp_count_map, norm_dict)
 
+            # 二价数据集测试效果
+            test_pd = test_pd.copy()
             test_pd["shading_ecpm"] = price
             test_pd["income"] = opt_gain
             test_pd["before_income"] = before_gain
+
+            # 去掉未竞得的和数据异常的
+            test_pd = test_pd[test_pd.target_price > 0]
+            test_pd = test_pd[test_pd.target_price <= test_pd.response_ecpm]
+
             test_pd["label_before"] = np.select([
                 (test_pd["response_ecpm"] >= test_pd["target_price"])],
                 [test_pd["response_ecpm"]], default=0)
-
+            """
             test_pd["label_increase"] = np.select([
                 (test_pd["virtual_ecpm"] >= test_pd["target_price"])],
                 [test_pd["virtual_ecpm"]], default=0)
-
+            """
             test_pd["label_after"] = np.select([
                 (test_pd["shading_ecpm"] >= test_pd["target_price"])],
                 [test_pd["shading_ecpm"]], default=0)
 
             # 竞得率 & cpm
-            win_rate_before = 1.0
+            win_rate_before = win_rate_after = 1.0
+            cpm_after = 0
             if len(test_pd["label_before"]) != 0:
                 win_rate_before = len(test_pd[test_pd["label_before"] > 0]) / len(test_pd["label_before"])
-
             cpm_before = sum(test_pd["label_before"]) / len(test_pd[test_pd["label_before"] > 0])
 
-            win_rate_increase = len(test_pd[test_pd["label_increase"] > 0]) / len(test_pd["label_increase"])
-            cpm_increase = sum(test_pd["label_increase"]) / len(test_pd[test_pd["label_increase"] > 0])
-
-            win_rate_after = len(test_pd[test_pd["label_after"] > 0]) / len(test_pd["label_after"])
-            cpm_after = sum(test_pd["label_after"]) / len(test_pd[test_pd["label_after"] > 0])
+            if len(test_pd[test_pd["label_after"] > 0]):
+                win_rate_after = len(test_pd[test_pd["label_after"] > 0]) / len(test_pd["label_after"])
+                cpm_after = sum(test_pd["label_after"]) / len(test_pd[test_pd["label_after"] > 0])
 
             self.logging.info(f"key {key}, \n"
                               f"win rate before: {win_rate_before}, cpm before: {cpm_before} \n"
-                              f"win rate increase: {win_rate_increase}, cpm after: {cpm_increase} \n"
                               f"win rate after: {win_rate_after}, cpm after: {cpm_after}")
 
             evaluation[key] = {
-                "win_rate_before"
+                "win_rate_before": win_rate_before,
+                "cpm_before": cpm_before,
+                "win_rate_after": win_rate_after,
+                "cpm_after": cpm_after
             }
 
         return evaluation
@@ -124,7 +134,15 @@ class ResultEvaluate(object):
         self.read_data()
 
         # 步骤二、评估结果
-        self.result_evaluation(bandit_dict)
+        evaluation_dict = self.result_evaluation(bandit_dict)
+
+        result_dir = "./result"
+        if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
+
+        mhour = datetime.now().strftime("%Y%m%d%H")
+        with open(result_dir + f"/evaluation_result_{mhour}.json", mode='w', encoding='utf-8') as f:
+            json.dump(evaluation_dict, f)
 
 
 if __name__ == '__main__':
