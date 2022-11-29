@@ -18,9 +18,9 @@ import copy
 from collections import defaultdict
 import matplotlib.pyplot as plt
 import os
-from scipy.stats import beta
+from scipy.stats import beta as Beta
 from datetime import datetime
-from arm.bernoulliArm import bernoulliArm
+from arm.bernoulliArm import BernoulliArm
 
 if Environment == "offline":
     logging.basicConfig(
@@ -227,97 +227,37 @@ class ThompsonSamplingBandit(object):
             else:
                 chosen_count_map[price] += 1
 
+        ecpm_alpha = {}
+        ecpm_beta = {}
         for price in chosen_count_map.keys():
             rate = 0.0
             if price in imp_count_map:
                 rate = float(imp_count_map[price]) / chosen_count_map[price]
 
             estimared_rewards_map[price] = rate * self.calculate_reward_weigt_quadratic(price, market_price_value)
-        return chosen_count_map, imp_count_map, estimared_rewards_map
 
-    def select_arm(self, a, b):
+            ecpm_beta[price] = 1
+            ecpm_alpha[price] = 1
+
+        return chosen_count_map, imp_count_map, estimared_rewards_map, ecpm_alpha, ecpm_beta
+
+    def select_arm(self, chosen_key_set, ecpm_alpha, ecpm_beta):
         """
         Thompson Sampling selection of arm for each round
         """
-        # Pair up all beta params of a and b for each arm
-        beta_params = zip(a, b)
+        max_probs_key = 0
+        beta_rvs_best = 0.0
+        for k in chosen_key_set:
+            alpha = ecpm_alpha[k]
+            beta = ecpm_beta[k]
 
-        # Perform random draw for all arms based on their params (a,b)
-        all_draws = [beta.rvs(i[0], i[1], size=1) for i in beta_params]
+            # Perform random draw for all arms based on their params (a,b)
+            beta_rvs = Beta.rvs(alpha, beta, size=1)
+            if beta_rvs_best < beta_rvs:
+                beta_rvs_best = beta_rvs
+                max_probs_key = k
 
-        # return index of arm with the highest draw
-        return all_draws.index(max(all_draws))
-
-    def update(self, chosen_count_map, estimared_rewards_map, chones_arm, reward, a, b):
-        """
-        chose to update chosen arm and reward
-        """
-        # update counts pulled for chonsen arm
-        chosen_count_mapp[chones_arm] += 1
-        n = chosen_count_map[chones_arm]
-
-        # Update average/mean value/reward for chosen arm
-        value = estimared_rewards_map[chones_arm]
-        new_value = ((n-1)*value + reward) / float(n)
-        estimared_rewards_map[chones_arm] = new_value
-
-        # Update a and b
-        # a is based on total counts of reward of arm
-        a[chones_arm] += reward
-
-        # b is based on total counts of failed rewards on arm
-        b[chones_arm] += (1-reward)
-
-        return chosen_count_map, estimared_rewards_map, a, b
-
-    def thompson_sampling_initialize(self, n_arms):
-        """
-        Initialise k number of arms
-        """
-        counts = [0 for col in range(n_arms)]
-        values = [0 for col in range(n_arms)]
-
-        # Uiform distribution of prior beta(A, B)
-        a = [1 for arm in range(n_arms)]
-        b = [1 for arm in range(n_arms)]
-
-        return counts, values, a, b
-
-    def thompson_sampling_calculate(self, arms, num_sims, horizon):
-        """
-        Initialise variables for duration of accumulated simulation (num_sims * horizon_per_simulation)
-        """
-        cal_size = num_sims * horizon
-        chosen_arms = [0.0 for i in range(cal_size)]
-        rewards = [0.0 for i in range(cal_size)]
-        cumulative_rewards = [0 for i in range(cal_size)]
-        sim_nums = [0.0 for i in range(cal_size)]
-        times = [0.0 for i in range(cal_size)]
-
-        for sim in range(sim_nums):
-            sim += 1
-            counts, values, a, b = self.thompson_sampling_initialize(len(arms))
-
-            for t in range(horizon):
-                t += 1
-                index = (sim - 1) * horizon + t - 1
-                sim_nums[index] = sim
-                times[index] = t
-
-                # Selection of best arm and engaging it
-                chosen_arm = self.select_arm(a, b)
-                chosen_arms[index] = chosen_arm
-
-                # Engage chosen Bernoulli Arm and obtain reward info
-                reward = arms[chosen_arm].draw()
-                rewards[index] = reward
-
-                if t == 1:
-                    cumulative_rewards[index] = reward
-                else:
-                    cumulative_rewards[index] = cumulative_rewards[index - 1] + reward
-
-                self.update(counts, values, chones_arm, reward, a, b)
+        return max_probs_key, beta_rvs_best
 
     def bandit(self, media_app_id, position_id, norm_dict, market_price_value,
                impression_price_list, no_impression_price_list):
@@ -326,9 +266,9 @@ class ThompsonSamplingBandit(object):
         """
         Dis_Image = Distributed_Image(logging)
         # 步骤1：初始化
-        chosen_count_map, imp_count_map, estimared_rewards_map = self.bandit_init(impression_price_list,
-                                                                                  no_impression_price_list,
-                                                                                  market_price_value)
+        chosen_count_map, imp_count_map, estimared_rewards_map,\
+            ecpm_alpha, ecpm_beta = self.bandit_init(impression_price_list, no_impression_price_list,
+                                                     market_price_value)
 
         true_chosen_count_map = copy.deepcopy(chosen_count_map)
         true_imp_count_map = copy.deepcopy(imp_count_map)
@@ -363,29 +303,8 @@ class ThompsonSamplingBandit(object):
         num_sims = min(sum(chosen_count_map.values()) * sample_ratio, max_sampling_freq)
 
         for sim in range(num_sims):
-            beta_rvs_best = 0.0
-            max_probs_key = 0
-            total_count = sum(sampling_chosen_count_map.values())
-            sim += 1
             # 步骤3：1、select arms
-            for k in chosen_key_set:
-                sampling_count = 0
-                if k in sampling_chosen_count_map:
-                    sampling_count += sampling_chosen_count_map[k]
-
-                # 计算I
-                if k in imp_count_map:
-                    alpha = max(imp_count_map[k], 1)
-                    beta = max(chosen_count_map[k] - imp_count_map[k], 1)
-                else:
-                    alpha = 1
-                    beta = max(chosen_count_map[k], 1)
-
-                # Perform random draw for all arms based on their params (a,b)
-                beta_rvs = beta.rvs(alpha, beta, size=1)
-                if beta_rvs_best < beta_rvs:
-                    beta_rvs_best = beta_rvs
-                    max_probs_key = k
+            max_probs_key, beta_rvs_best = self.select_arm(chosen_key_set, ecpm_alpha, ecpm_beta)
 
             # 记录上一轮的reward ratio
             revenue_rate_list.append(beta_rvs_best)
@@ -395,6 +314,7 @@ class ThompsonSamplingBandit(object):
 
             if max_probs_key not in sampling_chosen_count_map:
                 sampling_chosen_count_map[max_probs_key] = 0
+
             sampling_chosen_count_map[max_probs_key] += 1
 
             # 步骤3：update
@@ -467,6 +387,12 @@ class ThompsonSamplingBandit(object):
                         weight = self.calculate_reward_weigt_quadratic(x, min_market_price)
                         estimared_rewards_map[x] += 1 * weight
 
+                        # ecpm_alpha is based on total counts of rewards of arm
+                        ecpm_alpha[x] += weight
+
+                        # ecpm_beta is based on total counts of failed rewards on arm
+                        ecpm_beta[x] += 1 - weight
+
         # 取reward最大值
         market_price = 0
         market_price_score = 0.0
@@ -492,23 +418,23 @@ class ThompsonSamplingBandit(object):
                                      revenue_rate_list, sampling_chosen_count_map)
 
         # 保存结果
-        result_list = {
-            "imp_count_map": imp_count_map,
-            "chosen_count_map": chosen_count_map,
-            "true_imp_count_map": true_imp_count_map,
-            "true_chosen_count_map": true_chosen_count_map,
-            "revenue_rate_list": revenue_rate_list,
-            "sampling_chosen_count_map": sampling_chosen_count_map,
-            "market_price_value": market_price_value,
-            "min_imp_price_value": impression_price_list[0]
-        }
-        result_dir = "./result/{}/{}".format(media_app_id, position_id)
-        if not os.path.exists(result_dir):
-            os.makedirs(result_dir)
-
-        mhour = datetime.now().strftime("%Y%m%d%H")
-        with open(result_dir + f"/bandit_result_{mhour}.json", mode='w', encoding='utf-8') as f:
-            json.dump(result_list, f)
+        # result_list = {
+        #     "imp_count_map": imp_count_map,
+        #     "chosen_count_map": chosen_count_map,
+        #     "true_imp_count_map": true_imp_count_map,
+        #     "true_chosen_count_map": true_chosen_count_map,
+        #     "revenue_rate_list": revenue_rate_list,
+        #     "sampling_chosen_count_map": sampling_chosen_count_map,
+        #     "market_price_value": market_price_value,
+        #     "min_imp_price_value": impression_price_list[0]
+        # }
+        # result_dir = "./result/{}/{}".format(media_app_id, position_id)
+        # if not os.path.exists(result_dir):
+        #     os.makedirs(result_dir)
+        #
+        # mhour = datetime.now().strftime("%Y%m%d%H")
+        # with open(result_dir + f"/bandit_result_{mhour}.json", mode='w', encoding='utf-8') as f:
+        #     json.dump(result_list, f)
 
         """ 读取结果
         with open(result_dir + "/bandit_result.json", mode='r', encoding='utf-8') as f:

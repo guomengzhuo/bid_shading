@@ -15,8 +15,9 @@ from data_process.read_data import ReadData
 from data_process.result_evaluate import ResultEvaluate
 from configs.config import DATA_PATH, TEST_DATA_PATH
 from configs.config import PLTV_LEVEL, parallel_num, Environment, Multi_Process, search_test
-# from bandit.UCB_v0 import UCBBandit
-from bandit.UCB import UCBBandit
+# from bandit.UCB_v0 import Bandit
+# from bandit.UCB import Bandit
+from bandit.thompsonSampling import ThompsonSamplingBandit as Bandit
 import logging
 import numpy as np
 import pandas as pd
@@ -96,7 +97,7 @@ class BidShading(object):
     def run(self):
         self.logging.info("run -> start")
 
-        bandit = UCBBandit()
+        bandit = Bandit()
 
         # 1、读取相关要处理的的数据
         self.read_data()
