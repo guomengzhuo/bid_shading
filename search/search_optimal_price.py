@@ -30,8 +30,8 @@ def search_price_for_optimal_cost(logging, ecpm, market_price, chosen_count_map,
     opt_price = 1.0
     opt_gain = 0
     before_gain = 0
-    norm_max = norm_dict["norm_max"]
-    norm_min = norm_dict["norm_min"]
+    norm_max = float(norm_dict["norm_max"])
+    norm_min = float(norm_dict["norm_min"])
     win_rate_dict = {}
     for price, chosen_count in chosen_count_map.items():
         if chosen_count < 1 or price not in imp_count_map:
@@ -40,7 +40,8 @@ def search_price_for_optimal_cost(logging, ecpm, market_price, chosen_count_map,
         imp_count = imp_count_map[price]
 
         # 最大化 impression_rate * (ecpm - price)
-        price = price * (norm_max - norm_min) + norm_min
+        price = float(price) * (norm_max - norm_min) + norm_min
+
         win_rate = imp_count * 1.0 / chosen_count
         win_rate_dict[price] = win_rate
         expect_gain = win_rate * (ecpm - price)
@@ -50,8 +51,8 @@ def search_price_for_optimal_cost(logging, ecpm, market_price, chosen_count_map,
 
     opt_price = round(opt_price, 4)
 
-    logging.info(f"market_price:{market_price}, opt_price:{opt_price}, ecpm:{ecpm}, opt_gain:{opt_gain},"
-                 f" ,before_gain:{before_gain}, win_rate_dict:{win_rate_dict}")
+    # logging.info(f"market_price:{market_price}, opt_price:{opt_price}, ecpm:{ecpm}, opt_gain:{opt_gain},"
+    #              f" ,before_gain:{before_gain}, win_rate_dict:{win_rate_dict}")
     return opt_price, opt_gain, before_gain
 
 

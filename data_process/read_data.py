@@ -223,9 +223,9 @@ class ReadData(object):
 
                 cut_bins = pd.cut(group_pd["market_price"], bins=json.loads(write_line["bins"]))
 
-                norm_dict[media_app_id][position_id]= {
-                    "norm_min": write_line["norm_min"],
-                    "norm_max": write_line["norm_max"],
+                norm_dict[media_app_id][position_id] = {
+                    "norm_min": float(write_line["norm_min"]),
+                    "norm_max": float(write_line["norm_max"]),
                     "bins": write_line["bins"],
                     "market_price_list": json.dumps(list(group_pd["market_price"].groupby(cut_bins).count()))
                 }
@@ -254,7 +254,7 @@ class ReadData(object):
 
         self.logging.info(f"len imp_dict:{len(imp_dict)},  len no_imp_dict:{len(no_imp_dict)}, "
                           f"len market_price_dict:{len(market_price_dict)}")
-        return market_price_dict, imp_dict, no_imp_dict, norm_dict
+        return market_price_dict, imp_dict, no_imp_dict, norm_dict, data_pd
 
     def test_data_process(self):
         """
@@ -278,6 +278,37 @@ class ReadData(object):
 
         return data_pd_test[["key", "response_ecpm", "target_price", "win_price", "click_num",
                              "target_cpa", "pay_amount"]]
+
+
+    def read_test_data_process(self, norm_dict):
+        """
+        read test dataset
+        """
+        # 1、获取本地数据
+        data_pd = self.read_csv_data()
+        data_pd = self.data_filter(data_pd)
+        norm_pd_list = []
+        for media_app_id in norm_dict:
+            for position_id in norm_dict[media_app_id]:
+                norm_min = norm_dict[media_app_id][position_id]["norm_min"]
+                norm_max = norm_dict[media_app_id][position_id]["norm_max"]
+                bins = json.loads(norm_dict[media_app_id][position_id]["bins"])
+
+                group_pd = data_pd[(data_pd.media_app_id == media_app_id) & (data_pd.position_id == position_id)].copy()
+
+                group_pd["norm_ecpm"] = (group_pd["response_ecpm"] -norm_min) / (norm_max - norm_min)
+                group_pd["win_price"] = (group_pd["win_price"] - norm_min) / (norm_max - norm_min)
+
+                group_pd["interval"] = pd.cut(group_pd["norm_ecpm"], bins=bins)
+                group_pd = group_pd.dropna()
+
+                norm_pd_list.append(group_pd)
+
+        data_pd = pd.concat(norm_pd_list)
+        # 直接用离散化的右边界替换原来的ecpm
+        data_pd["response_ecpm"] = data_pd["interval"].map(lambda x: x.right)
+
+        return data_pd
 
 
 if __name__ == '__main__':

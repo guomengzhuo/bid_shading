@@ -44,8 +44,6 @@ class calculate_price_adjustment_gain(object):
         if key not in optimal_ratio_dict:
             optimal_ratio_dict[key] = {}
 
-        # todo(@mfishzhang): 修改
-        # ecpm_list = np.arange(lower_bound, upper_bound, step)
         ecpm_list = np.arange(lower_bound, upper_bound, step)
         adjust_ratio = []
         gain_list = []

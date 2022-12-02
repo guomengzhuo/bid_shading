@@ -9,7 +9,7 @@ import logging
 import math
 import multiprocessing
 import numpy as np
-from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, sample_ratio, Environment, No_pltv
+from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, sample_ratio, Environment, No_pltv, MAB_SAVE_STEP
 from tools.market_price_distributed import Distributed_Image
 import copy
 from collections import defaultdict
@@ -44,7 +44,8 @@ class UCBBandit(object):
         """
 
     def calculate_market_price(self, media_app_id, position_id, market_price_dict,
-                               impression_price_dict, no_impression_price, norm_dict, optimal_ratio_dict):
+                               impression_price_dict, no_impression_price, norm_dict, optimal_ratio_dict,
+                               data_pd):
         """
         计算市场价格
         :params market_price_dict = {pltv:value}
@@ -79,12 +80,15 @@ class UCBBandit(object):
                 # market_price 市场价格
                 # chosen_count_map = {}  # 记录选择次数
                 # imp_count_map = {}  # 记录曝光次数
-                market_price, chosen_count_map, imp_count_map = self.bandit(media_app_id,
-                                                                            position_id,
-                                                                            norm_dict[level],
-                                                                            market_price_value,
-                                                                            impression_price_list,
-                                                                            no_impression_price_list)
+                market_price, chosen_count_map, imp_count_map, true_imp_count_map,\
+                true_chosen_count_map, revenue_rate_list,optimal_ratio_dict = self.bandit(media_app_id,
+                                                                                           position_id,
+                                                                                           norm_dict[level],
+                                                                                           market_price_value,
+                                                                                           impression_price_list,
+                                                                                           no_impression_price_list,
+                                                                                           data_pd,
+                                                                                           optimal_ratio_dict)
 
                 logging.info(f"proc_id={multiprocessing.current_process().name},"
                              f"media_app_id:{media_app_id}, position_id:{position_id}, level:{level}, "
@@ -114,12 +118,15 @@ class UCBBandit(object):
                 # market_price 市场价格
                 # chosen_count_map = {}  # 记录选择次数
                 # imp_count_map = {}  # 记录曝光次数
-                market_price, chosen_count_map, imp_count_map = self.bandit(media_app_id,
-                                                                            position_id,
-                                                                            norm_dict,
-                                                                            market_price_value,
-                                                                            impression_price_list,
-                                                                            no_impression_price_list)
+                market_price, chosen_count_map, imp_count_map, true_imp_count_map,\
+                true_chosen_count_map, revenue_rate_list, optimal_ratio_dict = self.bandit(media_app_id,
+                                                                                           position_id,
+                                                                                           norm_dict,
+                                                                                           market_price_value,
+                                                                                           impression_price_list,
+                                                                                           no_impression_price_list,
+                                                                                           data_pd,
+                                                                                           optimal_ratio_dict)
 
                 logging.info(f"calculate default data proc_id={multiprocessing.current_process().name},"
                              f"media_app_id:{media_app_id}, position_id:{position_id},"
@@ -127,15 +134,14 @@ class UCBBandit(object):
                              f"len impression_price_list:{len(impression_price_list)}, "
                              f"len no_impression_price_list:{len(no_impression_price_list)}")
 
-                optimal_ratio_dict = self.save_bandit_result(media_app_id, position_id, -1,
-                                                             market_price, chosen_count_map, imp_count_map,
-                                                             norm_dict, optimal_ratio_dict)
+                # optimal_ratio_dict = self.save_bandit_result(media_app_id, position_id, -1,
+                #                                              market_price, chosen_count_map, imp_count_map,
+                #                                              norm_dict, true_imp_count_map)
 
         return optimal_ratio_dict
 
-    def save_bandit_result(self, media_app_id, position_id, level,
-                           market_price_norm, chosen_count_map, imp_count_map, norm_dict,
-                           optimal_ratio_dict):
+    def save_bandit_result(self, media_app_id, position_id, level, market_price_norm,
+                           chosen_count_map, imp_count_map, norm_dict, optimal_ratio_dict):
 
         norm_max = norm_dict["norm_max"]
         norm_min = norm_dict["norm_min"]
@@ -153,6 +159,38 @@ class UCBBandit(object):
         optimal_ratio_dict[key]['chosen_count_map'] = chosen_count_map
         optimal_ratio_dict[key]['imp_count_map'] = imp_count_map
         optimal_ratio_dict[key]['norm_dict'] = norm_dict
+        # optimal_ratio_dict[key]['true_imp_count_map'] = true_imp_count_map
+        # optimal_ratio_dict[key]['true_chosen_count_map'] = true_chosen_count_map
+        # optimal_ratio_dict[key]['reward_ratio_list'] = reward_ratio_list
+
+        return optimal_ratio_dict
+
+    def save_bandit_result_during_loop(self, media_app_id, position_id, level,
+                                       market_price_norm, chosen_count_map, imp_count_map, true_chosen_count_map,
+                                       true_imp_count_map, norm_dict, loop_index, optimal_ratio_dict):
+
+        norm_max = norm_dict["norm_max"]
+        norm_min = norm_dict["norm_min"]
+        market_price = market_price_norm * (norm_max - norm_min) + norm_min
+
+        if level == -1:
+            key = f"{media_app_id}_{position_id}"
+        else:
+            key = f"{media_app_id}_{position_id}_{level}"
+
+        if key not in optimal_ratio_dict:
+            optimal_ratio_dict[key] = {}
+
+        if loop_index not in optimal_ratio_dict[key]:
+            optimal_ratio_dict[key][loop_index] = {}
+
+        optimal_ratio_dict[key][loop_index]['market_price'] = market_price
+        optimal_ratio_dict[key][loop_index]['chosen_count_map'] = chosen_count_map
+        optimal_ratio_dict[key][loop_index]['imp_count_map'] = imp_count_map
+        optimal_ratio_dict[key][loop_index]['norm_dict'] = norm_dict
+        optimal_ratio_dict[key]['true_imp_count_map'] = true_imp_count_map
+        optimal_ratio_dict[key]['true_chosen_count_map'] = true_chosen_count_map
+        # optimal_ratio_dict[key]['reward_ratio_list'] = reward_ratio_list
 
         return optimal_ratio_dict
 
@@ -189,6 +227,8 @@ class UCBBandit(object):
         计算reward权重
         """
         reward = 1 - (price - market_price_value) ** 2
+
+        reward = 1 / np.exp(10 * (price - market_price_value))
 
         return reward
 
@@ -231,10 +271,12 @@ class UCBBandit(object):
         return chosen_count_map, imp_count_map, estimared_rewards_map
 
     def bandit(self, media_app_id, position_id, norm_dict, market_price_value,
-               impression_price_list, no_impression_price_list):
+               impression_price_list, no_impression_price_list, data_pd, optimal_ratio_dict):
         """
         e-e探索：UCB方式
         """
+        data_pd = data_pd[data_pd.win_price <= data_pd.response_ecpm]
+
         Dis_Image = Distributed_Image(logging)
         # 步骤1：初始化
         chosen_count_map, imp_count_map, estimared_rewards_map = self.bandit_init(impression_price_list,
@@ -272,7 +314,10 @@ class UCBBandit(object):
         search_count_set = []
 
         cal_num = min(sum(chosen_count_map.values()) * sample_ratio, max_sampling_freq)
-        for sampling_freq in range(1, cal_num):
+        loop_index = 0
+        for _, row in data_pd.iterrows():
+            ecpm = row["response_ecpm"]
+            win_price = row["win_price"]
 
             max_upper_bound_probs = 0.0
             max_probs_key = 0
@@ -316,7 +361,6 @@ class UCBBandit(object):
                                              max(chosen_count_map[max_probs_key] - imp_count_map[max_probs_key], 1))
                 is_win = np.random.binomial(1, sample_rate)
                 index = price_list.index(max_probs_key)
-
 
                 count = 0
                 if is_win == 1:
@@ -379,6 +423,20 @@ class UCBBandit(object):
                         weight = self.calculate_reward_weigt_quadratic(x, min_market_price)
                         estimared_rewards_map[x] += 1 * weight
 
+            loop_index += 1
+            if loop_index % MAB_SAVE_STEP == 0:
+                imp_count_map_now = {}
+                chosen_count_map_now = {}
+                for x in chosen_count_map.keys():
+                    if x in true_imp_count_map:
+                        imp_count_map_now[x] = imp_count_map[x] - true_imp_count_map[x]
+                    chosen_count_map_now[x] = chosen_count_map[x] - true_chosen_count_map[x]
+
+                optimal_ratio_dict = self.save_bandit_result_during_loop(media_app_id, position_id, -1,
+                                                                         0, chosen_count_map_now, imp_count_map_now,
+                                                                         true_chosen_count_map, true_imp_count_map,
+                                                                         norm_dict, loop_index, optimal_ratio_dict)
+
         # 取reward最大值
         market_price = 0
         market_price_score = 0.0
@@ -403,10 +461,11 @@ class UCBBandit(object):
                                      '_'.join([str(media_app_id), str(position_id)]),
                                      revenue_rate_list, sampling_chosen_count_map)
 
-        return market_price, chosen_count_map, imp_count_map
+        return market_price, chosen_count_map, imp_count_map, \
+               true_imp_count_map, true_chosen_count_map, revenue_rate_list, optimal_ratio_dict
 
     def do_process(self, media_app_id, media_position_dict_obj, market_price_dict_obj, impression_price_dict_obj,
-                   no_impression_obj, norm_dict):
+                   no_impression_obj, norm_dict, data_pd):
         """
         根据读取的数据，计算bid shading系数，输出至redis
         :return:
@@ -449,6 +508,7 @@ class UCBBandit(object):
                     continue
 
             self.calculate_market_price(media_app_id, position_id, market_price, impression_price,
-                                        no_impression_price, norm_dict[position_id], optimal_ratio_dict)
+                                        no_impression_price, norm_dict[position_id], optimal_ratio_dict,
+                                        data_pd[data_pd.position_id == position_id])
 
         return optimal_ratio_dict
