@@ -81,11 +81,9 @@ class Distributed_Image(object):
         plt.scatter(pred_win_rate.keys(), pred_win_rate.values(), c='r', s=5, label="pred")
         plt.scatter(true_win_rate.keys(), true_win_rate.values(), c='blue', s=5, alpha=0.5, label='true')
         plt.scatter(true_win_rate_acc.keys(), true_win_rate_acc.values(), c='black', s=5, alpha=0.5, label='true_acc')
-        """
-        plt.scatter(sampling_chosen_count_map.keys(),
-                    np.array(list(sampling_chosen_count_map.values())) / max(sampling_chosen_count_map.values()),
-                    c='black', s=5, alpha=0.5, label='sample_nums')
-        """
+        # plt.scatter(sampling_chosen_count_map.keys(),
+        #             np.array(list(sampling_chosen_count_map.values())) / max(sampling_chosen_count_map.values()),
+        #             c='green', s=5, alpha=0.5, label='sample_nums', marker='o')
         plt.scatter(_market_price_value, pred_win_rate[_market_price_value], c="green", marker="^")
         if min_imp_price in pred_win_rate:
             plt.scatter(min_imp_price, pred_win_rate[min_imp_price], c="green", marker="*")
@@ -99,14 +97,17 @@ class Distributed_Image(object):
 
         plt.savefig(figure_dir + "/pred_win_rate_media_{}_position_{}.png"
                     .format(media_app_id, position_id))
-        plt.show()
+        # plt.show()
 
         # 绘制 reward ratio 变化曲线
         sample_index = 0
         sample_revenue_rate_list = {}
-        while sample_index * 1000 < len(revenue_rate_list):
-            sample_revenue_rate_list[sample_index * 1000] = revenue_rate_list[sample_index * 1000]
-            sample_index += 1
+        while sample_index < min(10000, len(revenue_rate_list)):
+            sample_revenue_rate_list[sample_index] = revenue_rate_list[sample_index]
+            if sample_index < 1000:
+                sample_index += 10
+            else:
+                sample_index += 100
 
         plt.figure(dpi=300)
         plt.title("{} reward ratio".format(name))
@@ -114,4 +115,4 @@ class Distributed_Image(object):
 
         plt.savefig(figure_dir + "/reward_ratio_media_{}_position_{}.png"
                     .format(media_app_id, position_id))
-        plt.show()
+        # plt.show()
