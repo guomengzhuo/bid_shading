@@ -47,3 +47,6 @@ DATA_NUMS_LOWER_BOUND = 1000
 
 # MAB循环时保存的频率
 MAB_SAVE_STEP = 500
+
+# 测试集测试的结果数量 - 绘图时的点的个数
+EVALUATION_POINT_NUMS = 20

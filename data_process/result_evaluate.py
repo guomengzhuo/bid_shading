@@ -10,7 +10,7 @@ import pandas as pd
 import os
 import json
 from datetime import datetime
-from configs.config import TEST_DATA_PATH, No_pltv, ratio_step, MAB_SAVE_STEP
+from configs.config import TEST_DATA_PATH, No_pltv, ratio_step, MAB_SAVE_STEP, EVALUATION_POINT_NUMS
 from data_process.read_data import ReadData
 from search.calculate_price_adjustment_gain import calculate_price_adjustment_gain
 from tools.reward_ratio_result_plot import Reward_Ratio_Image
@@ -233,7 +233,7 @@ class ResultEvaluate(object):
             surplus_upper_bound = np.sum(test_pd["response_ecpm"] - test_pd["target_price"])
 
             record_nums = len(dict)
-            point_step = record_nums // 200
+            point_step = record_nums // EVALUATION_POINT_NUMS
             if point_step == 0:
                 continue
 
