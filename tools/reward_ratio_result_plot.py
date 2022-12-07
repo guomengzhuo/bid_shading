@@ -37,14 +37,15 @@ class Reward_Ratio_Image(object):
         # fig = plt.figure(dpi=300)
         plt.title("{} reward ratio distribution".format(name))
         ax_sub = ax.twinx()
-        # ax.scatter(result_pd["index"], result_pd["cpm_mab"]/cpm_norm, c='b', s=5, label="cpm (mab)")
-        # ax.scatter(result_pd["index"], result_pd["cpm_br"]/cpm_norm, c='green', s=5, label="cpm (best ratio)")
-        ax.scatter(result_pd["index"], result_pd["surplus_mab"], c='b', s=5, label="surplus (mab)")
-        ax.scatter(result_pd["index"], result_pd["surplus_br"], c='green', s=5, label="surplus (best ratio)")
-        ax.scatter(result_pd["index"], result_pd["surplus_upper_bound"], c='yellow', s=5, label="surplus upper bound")
+        ax.scatter(result_pd["index"], result_pd["cpm_mab"]/cpm_norm, c='b', s=5, label="cpm (mab)")
+        ax.scatter(result_pd["index"], result_pd["cpm_before"]/cpm_norm, c='green', s=5, label="cpm (before)")
+        ax.scatter(result_pd["index"], result_pd["cpm_win_price"]/cpm_norm, c='green', s=5, label="cpm (win price)")
+        # ax.scatter(result_pd["index"], result_pd["surplus_mab"], c='b', s=5, label="surplus (mab)")
+        # ax.scatter(result_pd["index"], result_pd["surplus_br"], c='green', s=5, label="surplus (best ratio)")
+        # ax.scatter(result_pd["index"], result_pd["surplus_upper_bound"], c='yellow', s=5, label="surplus upper bound")
         ax_sub.plot(result_pd["index"], result_pd["win_rate_mab"], c='r', label="win rate mab")
         ax_sub.plot(result_pd["index"], result_pd["win_rate_br"], c='black', label="win rate br (best ratio)")
-        ax.set_ylabel("surplus")
+        ax.set_ylabel("avg cpm")
         ax_sub.set_ylabel("win rate")
         ax_sub.set_ylim([0, 1])
         ax.set_xlabel("iterations (thousand)")
@@ -64,12 +65,13 @@ class Reward_Ratio_Image(object):
 
 
 def main():
-    with open("../result/evaluation_result_2022120119.json", mode='r',
+    with open("../result/evaluation_result_2022120617.json", mode='r',
               encoding='utf-8') as f:
         evaluation_dict = json.load(f)
 
         for key, dict in evaluation_dict.items():
-            Reward_Ratio_Image.reward_ratio_image(logging, dict, key)
+            if key in ["30633_36893", "30633_36565"]:
+                Reward_Ratio_Image.reward_ratio_image(logging, dict, key)
 
 
 if __name__ == '__main__':
