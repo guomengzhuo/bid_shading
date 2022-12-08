@@ -232,6 +232,7 @@ class ResultEvaluate(object):
                                                                                                           "label_br")
             surplus_upper_bound = np.sum(test_pd["response_ecpm"] - test_pd["target_price"])
             cpm_win_price = np.mean(test_pd["target_price"])
+            revenue_upper_bound = np.sum(test_pd["target_price"])
 
             record_nums = len(dict)
             point_step = record_nums // EVALUATION_POINT_NUMS
@@ -291,6 +292,7 @@ class ResultEvaluate(object):
                     "cpm_win_price": cpm_win_price,
                     "price_elasticity_br": price_elasticity_br,
                     "price_elasticity_mab": price_elasticity_mab,
+                    "revenue_upper_bound": revenue_upper_bound,
                     "revenue_mab": revenue_mab,
                     "revenue_br": revenue_br,
                     "surplus_upper_bound": surplus_upper_bound,

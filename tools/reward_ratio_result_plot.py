@@ -35,19 +35,13 @@ class Reward_Ratio_Image(object):
         # plt.rcParams['axes.unicode_minus'] = False
         fig, ax = plt.subplots(1, 1, dpi=300)
         # fig = plt.figure(dpi=300)
-        plt.title("{} reward ratio distribution".format(name))
+        plt.title("{} distribution".format(name))
         ax_sub = ax.twinx()
-        ax.scatter(result_pd["index"], result_pd["cpm_mab"]/cpm_norm, c='b', s=5, label="cpm (mab)")
-        ax.scatter(result_pd["index"], result_pd["cpm_before"]/cpm_norm, c='green', s=5, label="cpm (before)")
-        ax.scatter(result_pd["index"], result_pd["cpm_win_price"]/cpm_norm, c='green', s=5, label="cpm (win price)")
-        # ax.scatter(result_pd["index"], result_pd["surplus_mab"], c='b', s=5, label="surplus (mab)")
-        # ax.scatter(result_pd["index"], result_pd["surplus_br"], c='green', s=5, label="surplus (best ratio)")
-        # ax.scatter(result_pd["index"], result_pd["surplus_upper_bound"], c='yellow', s=5, label="surplus upper bound")
-        ax_sub.plot(result_pd["index"], result_pd["win_rate_mab"], c='r', label="win rate mab")
-        ax_sub.plot(result_pd["index"], result_pd["win_rate_br"], c='black', label="win rate br (best ratio)")
+        ax_sub.scatter(result_pd["index"], result_pd["win_rate_mab"], c='r', s=5, label="win rate mab")
+        ax.plot(result_pd["index"], result_pd["cpm_mab"], c='b', label="cpm mab")
         ax.set_ylabel("avg cpm")
         ax_sub.set_ylabel("win rate")
-        ax_sub.set_ylim([0, 1])
+        # ax_sub.set_ylim([0, 1])
         ax.set_xlabel("iterations (thousand)")
 
         axLine, axLabel = ax.get_legend_handles_labels()
@@ -63,15 +57,49 @@ class Reward_Ratio_Image(object):
         #             .format(media_app_id, position_id))
         plt.show()
 
+    def one_metrics_image(self, result_dict, name, metrics='win_rate'):
+        result_pd = pd.DataFrame(result_dict).T
+        result_pd["index"] = result_pd.index.astype(float) / 1000
+        if result_pd.empty:
+            return
+
+        plot_cols = []
+        color_list = ['b', 'r', 'black', 'g']
+        for col_name in result_pd.columns:
+            if metrics in col_name:
+                plot_cols.append(col_name)
+
+        cpm_norm = max(max(result_pd["cpm_mab"]), max(result_pd["cpm_br"]))
+
+        fig, ax = plt.subplots(1, 1, dpi=300)
+        # fig = plt.figure(dpi=300)
+        plt.title("{} {} distribution".format(name, metrics))
+        for i in range(len(plot_cols)):
+            ax.scatter(result_pd["index"], result_pd[plot_cols[i]], c=color_list[i], s=5, label=plot_cols[i])
+        ax.set_ylabel(metrics)
+        ax.set_xlabel("iterations (thousand)")
+
+        fig.legend(loc=1, bbox_to_anchor=(1, 1), bbox_transform=ax.transAxes)
+
+        # [media_app_id, position_id] = name.split('_')
+        # figure_dir = "./figure/{}".format(media_app_id)
+        # if not os.path.exists(figure_dir):
+        #     os.makedirs(figure_dir)
+        #
+        # plt.savefig(figure_dir + "/reward_ratio_during_loops_media_{}_position_{}.png"
+        #             .format(media_app_id, position_id))
+        plt.show()
+
 
 def main():
-    with open("../result/evaluation_result_2022120617.json", mode='r',
+    with open("../result/evaluation_result_2022120717.json", mode='r',
               encoding='utf-8') as f:
         evaluation_dict = json.load(f)
 
         for key, dict in evaluation_dict.items():
             if key in ["30633_36893", "30633_36565"]:
-                Reward_Ratio_Image.reward_ratio_image(logging, dict, key)
+                for metrics in ["rr", "win_rate", "cpm", "price_elasticity", "revenue", "surplus"]:
+                    Reward_Ratio_Image.one_metrics_image(logging, dict, key, metrics)
 
 
 if __name__ == '__main__':
