@@ -228,7 +228,7 @@ class UCBBandit(object):
         """
         reward = 1 - (price - market_price_value) ** 2
 
-        reward = 1 / np.exp(10 * (price - market_price_value))
+        # reward = 1 / np.exp((price - market_price_value))
 
         return reward
 
@@ -507,8 +507,9 @@ class UCBBandit(object):
                                  f"or len(no_impression_price):{len(no_impression_price)} < 1")
                     continue
 
-            self.calculate_market_price(media_app_id, position_id, market_price, impression_price,
-                                        no_impression_price, norm_dict[position_id], optimal_ratio_dict,
-                                        data_pd[data_pd.position_id == position_id])
+            optimal_ratio_dict = \
+                self.calculate_market_price(media_app_id, position_id, market_price, impression_price,
+                                            no_impression_price, norm_dict[position_id], optimal_ratio_dict,
+                                            data_pd[data_pd.position_id == position_id])
 
         return optimal_ratio_dict

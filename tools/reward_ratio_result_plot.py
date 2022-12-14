@@ -92,7 +92,7 @@ class Reward_Ratio_Image(object):
 
 
 def main():
-    with open("../result/evaluation_result_2022120717.json", mode='r',
+    with open("../result/evaluation_result_2022121416.json", mode='r',
               encoding='utf-8') as f:
         evaluation_dict = json.load(f)
 
@@ -100,6 +100,9 @@ def main():
             if key in ["30633_36893", "30633_36565"]:
                 for metrics in ["rr", "win_rate", "cpm", "price_elasticity", "revenue", "surplus"]:
                     Reward_Ratio_Image.one_metrics_image(logging, dict, key, metrics)
+
+        for key, dict in evaluation_dict.items():
+            Reward_Ratio_Image.reward_ratio_image(logging, dict, key)
 
 
 if __name__ == '__main__':
