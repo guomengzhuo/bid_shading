@@ -206,9 +206,15 @@ class ResultEvaluate(object):
             test_pd = test_pd[test_pd.target_price > 0]
             test_pd = test_pd[test_pd.target_price <= test_pd.response_ecpm]
 
+            # 数据过滤筛选
+            test_pd["gap_ratio"] = (test_pd["response_ecpm"] - test_pd["target_price"]) / test_pd["response_ecpm"]
+            test_pd = test_pd[test_pd["gap_ratio"] > 0.2]
+
             if test_pd.empty:
                 self.logging.info(f"key:{key}, test_pd is empty!")
                 continue
+            else:
+                self.logging.info(f"key:{key}, test_pd data nums: {len(test_pd)}")
 
             # 上帝视角搜索最优价格，以最大化surplus为目标
             max_surplus = 0
@@ -240,7 +246,7 @@ class ResultEvaluate(object):
                 continue
 
             for index, result_dict in dict.items():
-                if 'true' in index or float(index) % (MAB_SAVE_STEP * point_step) != 0:
+                if 'true' in str(index) or float(index) % (MAB_SAVE_STEP * point_step) != 0:
                     continue
                 market_price = result_dict["market_price"]
                 chosen_count_map = result_dict["chosen_count_map"]
@@ -319,7 +325,13 @@ class ResultEvaluate(object):
             json.dump(evaluation_dict, f)
 
         for key, dict in evaluation_dict.items():
+            if key in ["30633_36893", "30633_36565"]:
+                for metrics in ["rr", "win_rate", "cpm", "price_elasticity", "revenue", "surplus"]:
+                    Reward_Ratio_Image.one_metrics_image(self.logging, dict, key, metrics)
+
+        for key, dict in evaluation_dict.items():
             Reward_Ratio_Image.reward_ratio_image(self.logging, dict, key)
+
 
 
 if __name__ == '__main__':
