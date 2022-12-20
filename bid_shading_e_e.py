@@ -17,6 +17,7 @@ from configs.config import DATA_PATH, TEST_DATA_PATH
 from configs.config import parallel_num, Environment, Multi_Process, search_test
 # from bandit.UCB_v0 import Bandit
 from bandit.UCB import UCBBandit as Bandit
+# from bandit.epsilonGreedy import EpsilonGreedyBandit as Bandit
 # from bandit.thompsonSampling import ThompsonSamplingBandit as Bandit
 import logging
 import json
