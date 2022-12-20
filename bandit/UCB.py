@@ -118,15 +118,13 @@ class UCBBandit(object):
                 # market_price 市场价格
                 # chosen_count_map = {}  # 记录选择次数
                 # imp_count_map = {}  # 记录曝光次数
-                market_price, chosen_count_map, imp_count_map, true_imp_count_map,\
-                true_chosen_count_map, revenue_rate_list, optimal_ratio_dict = self.bandit(media_app_id,
-                                                                                           position_id,
-                                                                                           norm_dict,
-                                                                                           market_price_value,
-                                                                                           impression_price_list,
-                                                                                           no_impression_price_list,
-                                                                                           data_pd,
-                                                                                           optimal_ratio_dict)
+                market_price, chosen_count_map, imp_count_map, true_imp_count_map,true_chosen_count_map,\
+                    revenue_rate_list, optimal_ratio_dict = self.bandit(media_app_id, position_id, norm_dict,
+                                                                        market_price_value,
+                                                                        impression_price_list,
+                                                                        no_impression_price_list,
+                                                                        data_pd,
+                                                                        optimal_ratio_dict)
 
                 logging.info(f"calculate default data proc_id={multiprocessing.current_process().name},"
                              f"media_app_id:{media_app_id}, position_id:{position_id},"

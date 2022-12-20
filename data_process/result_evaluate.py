@@ -248,6 +248,7 @@ class ResultEvaluate(object):
             for index, result_dict in dict.items():
                 if 'true' in str(index) or float(index) % (MAB_SAVE_STEP * point_step) != 0:
                     continue
+
                 market_price = result_dict["market_price"]
                 chosen_count_map = result_dict["chosen_count_map"]
                 imp_count_map = result_dict["imp_count_map"]
