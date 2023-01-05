@@ -149,7 +149,7 @@ class BidShading(object):
 
         else:
             try:
-                with open("result/bandit_result_2022121220_bid_shading_xmly_2022102109_2022102120.json", mode='r', encoding='utf-8') as f:
+                with open("result/bandit_result_2022121418_bid_shading_xmly_2022102109_2022102120.json", mode='r', encoding='utf-8') as f:
                     self.optimal_ratio_dict = json.load(f)
             except:
                 self.optimal_ratio_dict = {'30390_37638': {'market_price': 597.076154312, 'upper_bound': 1356,

@@ -6,6 +6,7 @@
 # @Software: PyCharm
 
 import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 import os
 import json
@@ -55,7 +56,7 @@ class Reward_Ratio_Image(object):
         #
         # plt.savefig(figure_dir + "/reward_ratio_during_loops_media_{}_position_{}.png"
         #             .format(media_app_id, position_id))
-        plt.show()
+        # plt.show()
 
     def one_metrics_image(self, result_dict, name, metrics='win_rate'):
         result_pd = pd.DataFrame(result_dict).T
@@ -88,23 +89,133 @@ class Reward_Ratio_Image(object):
         #
         # plt.savefig(figure_dir + "/reward_ratio_during_loops_media_{}_position_{}.png"
         #             .format(media_app_id, position_id))
+        # plt.show()
+
+    def multiple_method_comparison(self, multi_method_result_dict, name, metrics='win_rate'):
+        color_list = ['g', 'r', 'y', 'b']
+        i = 0
+
+        matplotlib.rcParams['pdf.fonttype'] = 42
+        matplotlib.rcParams['ps.fonttype'] = 42
+        plt.rcParams.update({'font.family': 'Times New Roman', 'font.size': 12})
+        fig, ax = plt.subplots(figsize=(6.4, 4.8), dpi=300)
+        marker_list = ['*', 'v', 'o', 'p', '^']
+
+        # 设置刻度
+        ax.tick_params(axis='both')
+        # 显示网格
+        ax.grid(True, linestyle='-.')
+        ax.yaxis.grid(True, linestyle='-.')
+
+        for method, result_dict in multi_method_result_dict.items():
+            result_pd = pd.DataFrame(result_dict).T
+            result_pd["index"] = result_pd.index.astype(float) / 1000
+            if result_pd.empty:
+                return
+
+            # if i == 0:
+            #     if metrics == "cpm_mab":
+            #         ax.plot(result_pd["index"], result_pd["cpm_before"], label="cpm_before", linestyle='-', marker='.',
+            #                 markersize='6', color='black')
+            #         ax.plot(result_pd["index"], result_pd["cpm_win_price"], label="cpm_win_price", linestyle='-', marker='.',
+            #                 markersize='6', color='gray')
+            #     elif metrics == "surplus_mab":
+            #         ax.plot(result_pd["index"], result_pd["surplus_upper_bound"], label="upper_bound", linestyle='-', marker='.',
+            #                 markersize='6', color='black')
+            #         ax.plot(result_pd["index"], result_pd["surplus_br"], label="surplus_br", linestyle='-', marker='.',
+            #                 markersize='6', color='gray')
+
+            ax.plot(result_pd["index"], result_pd[metrics], label=method, linestyle='-', marker=marker_list[i],
+                    markersize='6')
+            # ax.scatter(result_pd["index"], result_pd[metrics], c=color_list[i], s=5, label=method)
+            i += 1
+
+        ax.set_ylabel(metrics)
+        ax.set_xlabel("iterations (thousand)")
+
+        # fig.legend(loc=1, bbox_to_anchor=(1, 1), bbox_transform=ax.transAxes)
+        # 添加图例
+        legend = ax.legend(loc='center right')
+
+        [media_app_id, position_id] = name.split('_')
+        figure_dir = "./figure/{}".format(media_app_id)
+        if not os.path.exists(figure_dir):
+            os.makedirs(figure_dir)
+
+        plt.savefig(figure_dir + "/arm_nums_analyse_media_{}_position_{}_{}.png"
+                    .format(media_app_id, position_id, metrics))
         plt.show()
 
 
 def main():
-    with open("../result/evaluation_result_2022121416.json", mode='r',
-              encoding='utf-8') as f:
-        evaluation_dict = json.load(f)
+    multimethod_evaluation_result_dict = {}
+    multimethod_evaluation_name_dict = {
+        "exp_arm30": "evaluation_result_2022121517_exp_arm30.json",
+        # "arm_independent": "evaluation_result_2022121611_arm_independent.json",
+        "exp_arm100": "evaluation_result_2022123016_1_exp_arm100.json"
+    }
+    for key, name in multimethod_evaluation_name_dict.items():
+        with open(f"../result/{name}", mode='r',
+                  encoding='utf-8') as f:
+            singlemethod_evaluation_dict = json.load(f)
+            for media_position, dict in singlemethod_evaluation_dict.items():
+                if media_position not in multimethod_evaluation_result_dict.keys():
+                    multimethod_evaluation_result_dict[media_position] = {}
 
-        for key, dict in evaluation_dict.items():
-            if key in ["30633_36893", "30633_36565"]:
-                for metrics in ["rr", "win_rate", "cpm", "price_elasticity", "revenue", "surplus"]:
-                    Reward_Ratio_Image.one_metrics_image(logging, dict, key, metrics)
+                multimethod_evaluation_result_dict[media_position][key] = dict
 
-        for key, dict in evaluation_dict.items():
-            Reward_Ratio_Image.reward_ratio_image(logging, dict, key)
+    for key, dict in multimethod_evaluation_result_dict.items():
+        if key in ["30633_36893", "30633_36565"]:
+            # for metrics in ["surplus_mab"]:
+            for metrics in ["win_rate_mab", "cpm_mab", "surplus_mab"]:
+                Reward_Ratio_Image.multiple_method_comparison(logging, dict, key, metrics)
+
+        # for key, dict in evaluation_dict.items():
+        #     if key in ["30633_36893", "30633_36565"]:
+        #         for metrics in ["rr", "win_rate", "cpm", "price_elasticity", "revenue", "surplus"]:
+        #             Reward_Ratio_Image.one_metrics_image(logging, dict, key, metrics)
+        #
+        # for key, dict in evaluation_dict.items():
+        #     Reward_Ratio_Image.reward_ratio_image(logging, dict, key)
+
+
+def mean_plot_main():
+    result_path = '../result'
+    files = os.listdir(result_path)
+    multimethod_evaluation_name_dict = {
+        # "exp_arm10": "exp_arm10.json",
+        "exp_arm30": "exp_arm30.json",
+        "exp_arm50": "exp_arm50.json",
+        "exp_arm100": "exp_arm100.json"
+    }
+
+    multimethod_evaluation_result_dict = {}
+
+    for key, name in multimethod_evaluation_name_dict.items():
+        tmp_data_list = {}
+        cnt = 0
+        for file in files:
+            if "evaluation_result" in file and name in file:
+                with open(f"../result/{file}", mode='r', encoding='utf-8') as f:
+                    singlemethod_evaluation_dict = json.load(f)
+                    cnt += 1
+                    for media_position, dict in singlemethod_evaluation_dict.items():
+                        if media_position not in tmp_data_list.keys():
+                            tmp_data_list[media_position] = pd.DataFrame(dict)
+                        else:
+                            tmp_data_list[media_position] += pd.DataFrame(dict)
+        for media_position, dict in tmp_data_list.items():
+            if media_position not in multimethod_evaluation_result_dict.keys():
+                multimethod_evaluation_result_dict[media_position] = {}
+            multimethod_evaluation_result_dict[media_position][key] = (dict / cnt).to_dict()
+
+    for key, dict in multimethod_evaluation_result_dict.items():
+        if key in ["30633_36893", "30633_36565"]:
+            # for metrics in ["surplus_mab"]:
+            for metrics in ["win_rate_mab", "cpm_mab", "surplus_mab"]:
+                Reward_Ratio_Image.multiple_method_comparison(logging, dict, key, metrics)
 
 
 if __name__ == '__main__':
     # python3 bid_shading_e_e.py > train.log 2>&1 &
-    main()
+    mean_plot_main()

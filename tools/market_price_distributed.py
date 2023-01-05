@@ -8,6 +8,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import json
 
 
 class Distributed_Image(object):
@@ -37,7 +38,7 @@ class Distributed_Image(object):
         if min_imp_price in win_rate:
             plt.scatter(min_imp_price, win_rate[min_imp_price], c="m", marker="*")
 
-        plt.show()
+        # plt.show()
 
     def true_history_win_rate(self, imp_count_map, chosen_count_map):
         win_rate = {
@@ -47,7 +48,7 @@ class Distributed_Image(object):
         fig = plt.figure(dpi=300)
         plt.scatter(win_rate.keys(), win_rate.values(), s=10)
 
-        plt.show()
+        # plt.show()
 
     def true_pred_win_rate(self, pred_imp_count_map, pred_chosen_count_map, true_imp_count_map, true_chosen_count_map,
                            market_price_value, min_imp_price, name, revenue_rate_list, sampling_chosen_count_map):
@@ -116,3 +117,21 @@ class Distributed_Image(object):
         plt.savefig(figure_dir + "/reward_ratio_media_{}_position_{}.png"
                     .format(media_app_id, position_id))
         # plt.show()
+
+
+def main():
+    bandit_result_path_name = "../result/bandit_result_2022123016_bid_shading_xmly_2022102109_2022102120_exp_arm30.json"
+    evaluation_result_path_name = "../result/evaluation_result_2022123016_exp_arm30.json"
+    with open(f"../result/{bandit_result_path_name}", mode='r', encoding='utf-8') as f:
+        bandit_result = json.load(f)
+        print(bandit_result)
+
+        # 绘制最后一次迭代的预测竞得率曲线
+
+
+        # 对迭代过程中的各arm的竞得率进行展示，均值方差
+
+
+
+if __name__ == '__main__':
+    main()

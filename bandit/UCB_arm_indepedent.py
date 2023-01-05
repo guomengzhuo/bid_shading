@@ -118,13 +118,15 @@ class UCBBandit(object):
                 # market_price 市场价格
                 # chosen_count_map = {}  # 记录选择次数
                 # imp_count_map = {}  # 记录曝光次数
-                market_price, chosen_count_map, imp_count_map, true_imp_count_map,true_chosen_count_map,\
-                    revenue_rate_list, optimal_ratio_dict = self.bandit(media_app_id, position_id, norm_dict,
-                                                                        market_price_value,
-                                                                        impression_price_list,
-                                                                        no_impression_price_list,
-                                                                        data_pd,
-                                                                        optimal_ratio_dict)
+                market_price, chosen_count_map, imp_count_map, true_imp_count_map,\
+                true_chosen_count_map, revenue_rate_list, optimal_ratio_dict = self.bandit(media_app_id,
+                                                                                           position_id,
+                                                                                           norm_dict,
+                                                                                           market_price_value,
+                                                                                           impression_price_list,
+                                                                                           no_impression_price_list,
+                                                                                           data_pd,
+                                                                                           optimal_ratio_dict)
 
                 logging.info(f"calculate default data proc_id={multiprocessing.current_process().name},"
                              f"media_app_id:{media_app_id}, position_id:{position_id},"
@@ -273,7 +275,6 @@ class UCBBandit(object):
         """
         e-e探索：UCB方式
         """
-        # 二价数据集未竞得的win price=0，如果使用回传市场价格的数据，这里需要修改
         data_pd = data_pd[data_pd.win_price <= data_pd.response_ecpm]
 
         Dis_Image = Distributed_Image(logging)
@@ -284,12 +285,6 @@ class UCBBandit(object):
 
         true_chosen_count_map = copy.deepcopy(chosen_count_map)
         true_imp_count_map = copy.deepcopy(imp_count_map)
-
-        """
-        for key, _ in chosen_count_map.items():
-            chosen_count_map[key] = 2
-            imp_count_map[key] = 1
-        """
 
         # 步骤2：选top
         chosen_key_set = list(chosen_count_map.keys())
@@ -318,6 +313,7 @@ class UCBBandit(object):
 
         search_count_set = []
 
+        cal_num = min(sum(chosen_count_map.values()) * sample_ratio, max_sampling_freq)
         loop_index = 0
         for _, row in data_pd.iterrows():
             ecpm = row["response_ecpm"]
@@ -366,76 +362,13 @@ class UCBBandit(object):
                 is_win = np.random.binomial(1, sample_rate)
                 index = price_list.index(max_probs_key)
 
-                ######
-                # if win_price == 0 and max_probs_key < ecpm:
-                #     is_win = 0
-                # if win_price > 0:
-                #     if max_probs_key >= win_price:
-                #         is_win = 1
-                #     else:
-                #         is_win = 0
-                ######
-
-                count = 0
+                chosen_count_map[max_probs_key] += 1
                 if is_win == 1:
-                    # 选择的max_probs_key能曝光，向左搜索（减价）
-                    index = price_list.index(max_probs_key)
-                    index -= 1
-                    while index >= 0:
+                    type_a_update[max_probs_key] += 1
+                    imp_count_map[max_probs_key] += 1
 
-                        count -= 1
-
-                        tmp_price = price_list[index]
-                        if tmp_price not in imp_count_map or imp_count_map[tmp_price] < 1 \
-                                or chosen_count_map[tmp_price] - imp_count_map[tmp_price] < 1:
-                            break
-
-                        sample_rate = np.random.beta(imp_count_map[tmp_price],
-                                                     chosen_count_map[tmp_price] - imp_count_map[tmp_price])
-                        is_win = np.random.binomial(1, sample_rate)
-                        if is_win == 1:
-                            # 向小于方向探索
-                            index -= 1
-                        else:
-                            break
-
-                    index += 1
-                else:
-                    # 选择的max_probs_key不能曝光，向右搜索（加价）
-                    index += 1
-                    while index < len_price_list:
-
-                        count += 1
-
-                        tmp_price = price_list[index]
-                        if tmp_price not in imp_count_map or imp_count_map[tmp_price] < 1 \
-                                or chosen_count_map[tmp_price] - imp_count_map[tmp_price] < 1:
-                            break
-
-                        sample_rate = np.random.beta(imp_count_map[tmp_price],
-                                                     chosen_count_map[tmp_price] - imp_count_map[tmp_price])
-                        is_win = np.random.binomial(1, sample_rate)
-                        if is_win != 1:
-                            # 向大于方向探索
-                            index += 1
-                        else:
-                            break
-
-                    index -= 1
-
-                search_count_set.append(count)
-
-                min_market_price = price_list[index]
-                for x in chosen_key_set:
-                    chosen_count_map[x] += 1
-                    if x >= min_market_price:
-                        type_a_update[x] += 1
-                        if x not in imp_count_map.keys():
-                            imp_count_map[x] = 0
-                        imp_count_map[x] += 1  # if x == max_probs_key else 0.1
-
-                        weight = self.calculate_reward_weigt_quadratic(x, min_market_price)
-                        estimared_rewards_map[x] += 1 * weight
+                # weight = self.calculate_reward_weigt_quadratic(max_probs_key, max_probs_key)
+                estimared_rewards_map[max_probs_key] += 1
 
             loop_index += 1
             if loop_index % MAB_SAVE_STEP == 0:
