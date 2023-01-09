@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2022/11/8 15:44
+# @Time    : 2023/1/9 16:33
 # @Author  : biglongyuan
-# @Site    :
-# @File    : UCB1.py
+# @Site    : 
+# @File    : UCB_2.py
 # @Software: PyCharm
+
 
 """
 https://zhuanlan.zhihu.com/p/573415044：
@@ -52,6 +53,7 @@ class UCBBandit(object):
         """
         初始化
         """
+        self.alpha_param = 0.1
 
     def calculate_market_price(self, media_app_id, position_id, market_price_dict,
                                impression_price_dict, no_impression_price, norm_dict, optimal_ratio_dict,
@@ -210,7 +212,9 @@ class UCBBandit(object):
         if k_chosen_count < 1:
             k_chosen_count = 1
 
-        return math.sqrt(2 * math.log(total_count) / float(k_chosen_count))
+        tau = int(math.ceil((1 + self.alpha_param) ** k_chosen_count))
+
+        return math.sqrt((1. + k_chosen_count) * math.log(math.e * float(total_count) / tau) / (2 * tau))
 
     def calculate_reward_weigth(self, price, market_price_value, right_range, left_range):
         """
@@ -330,6 +334,9 @@ class UCBBandit(object):
 
         loop_index = 0
         for _, row in data_pd.iterrows():
+            ecpm = row["response_ecpm"]
+            win_price = row["win_price"]
+
             max_upper_bound_probs = 0.0
             max_probs_key = 0
             total_count = sum(sampling_chosen_count_map.values())
@@ -524,3 +531,4 @@ class UCBBandit(object):
                                             data_pd[data_pd.position_id == position_id])
 
         return optimal_ratio_dict
+

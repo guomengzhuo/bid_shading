@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2022/11/8 15:44
+# @Time    : 2023/1/9 15:05
 # @Author  : biglongyuan
-# @Site    :
-# @File    : UCB2.py
+# @Site    : 
+# @File    : UCB_1.py
 # @Software: PyCharm
 
 """
 https://zhuanlan.zhihu.com/p/573415044：
 算法（《Bandit Algorithms for Website Optimization》一书的前几章所介绍的算法，这里我直接拿它总结的结果使用）有一个弱点，
 它们只关心回报是多少，并不关心每个臂被拉下了多少次，这就意味着，这些算法不再会选中初始回报特别低臂，即使这个臂的回报只测试了一次。
-使用UCB2算法<Finite-time Analysis of the Multiarmed Bandit Problem. Machine Learning>，
+使用UCB1算法<Finite-time Analysis of the Multiarmed Bandit Problem. Machine Learning>，
 将会不仅仅关注于回报，同样会关注每个臂被探索的次数。
-和UCB1的差异是在计算calculate_delta的方法不同（UCB2算法介绍：https://zhuanlan.zhihu.com/p/80952651）
+在UCB1算法中，采用奖励期望估计的置信上界来作为这个指标
 """
 
 import json
@@ -52,7 +52,6 @@ class UCBBandit(object):
         """
         初始化
         """
-        self.alpha_param = 0.1
 
     def calculate_market_price(self, media_app_id, position_id, market_price_dict,
                                impression_price_dict, no_impression_price, norm_dict, optimal_ratio_dict,
@@ -211,9 +210,7 @@ class UCBBandit(object):
         if k_chosen_count < 1:
             k_chosen_count = 1
 
-        tau = int(math.ceil((1 + self.alpha_param) ** k_chosen_count))
-
-        return math.sqrt((1. + k_chosen_count) * math.log(math.e * float(total_count) / tau) / (2 * tau))
+        return math.sqrt(2 * math.log(total_count) / float(k_chosen_count))
 
     def calculate_reward_weigth(self, price, market_price_value, right_range, left_range):
         """
@@ -333,6 +330,9 @@ class UCBBandit(object):
 
         loop_index = 0
         for _, row in data_pd.iterrows():
+            ecpm = row["response_ecpm"]
+            win_price = row["win_price"]
+
             max_upper_bound_probs = 0.0
             max_probs_key = 0
             total_count = sum(sampling_chosen_count_map.values())
