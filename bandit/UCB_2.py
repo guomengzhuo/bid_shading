@@ -53,7 +53,7 @@ class UCBBandit(object):
         """
         初始化
         """
-        self.alpha_param = 0.1
+        self.alpha_param = 0.5
 
     def calculate_market_price(self, media_app_id, position_id, market_price_dict,
                                impression_price_dict, no_impression_price, norm_dict, optimal_ratio_dict,

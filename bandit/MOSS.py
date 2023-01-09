@@ -1,19 +1,16 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2023/1/9 15:05
+# @Time    : 2023/1/9 16:58
 # @Author  : biglongyuan
 # @Site    : 
-# @File    : UCB_1.py
+# @File    : MOSS.py
 # @Software: PyCharm
 
+"""
+《Regret Bounds and Minimax Policies under Partial Monitoring》
 
+对比 UCB1优化了 calculate_delta 就算方式
 """
-https://zhuanlan.zhihu.com/p/573415044：
-算法（《Bandit Algorithms for Website Optimization》一书的前几章所介绍的算法，这里我直接拿它总结的结果使用）有一个弱点，
-它们只关心回报是多少，并不关心每个臂被拉下了多少次，这就意味着，这些算法不再会选中初始回报特别低臂，即使这个臂的回报只测试了一次。
-使用UCB1算法<Finite-time Analysis of the Multiarmed Bandit Problem. Machine Learning>，
-将会不仅仅关注于回报，同样会关注每个臂被探索的次数。
-在UCB1算法中，采用奖励期望估计的置信上界来作为这个指标
-"""
+
 
 import json
 import logging
@@ -203,7 +200,11 @@ class UCBBandit(object):
 
         return optimal_ratio_dict
 
-    def calculate_delta(self, total_count, k_chosen_count):
+    def calculate_delta(self, total_rounds, total_count, k_chosen_count):
+        """
+        total_rounds : the number of rounds
+        k_chosen_count: switch times between arms
+        """
         # total_count->目前的试验次数，k_chosen_count->是这个臂被试次数
         if total_count == 0:
             return 0
@@ -211,7 +212,7 @@ class UCBBandit(object):
         if k_chosen_count < 1:
             k_chosen_count = 1
 
-        return math.sqrt(2 * math.log(total_count) / float(k_chosen_count))
+        return math.sqrt(max(math.log(total_rounds / k_chosen_count), 0) / float(total_count))
 
     def calculate_reward_weigth(self, price, market_price_value, right_range, left_range):
         """
@@ -330,6 +331,7 @@ class UCBBandit(object):
         search_count_set = []
 
         loop_index = 0
+        total_rounds = len(data_pd)
         for _, row in data_pd.iterrows():
             ecpm = row["response_ecpm"]
             win_price = row["win_price"]
@@ -343,7 +345,8 @@ class UCBBandit(object):
                 if k in sampling_chosen_count_map:
                     sampling_count += sampling_chosen_count_map[k]
 
-                upper_bound_probs = estimared_rewards_map[k] + self.calculate_delta(total_count, sampling_count)
+                upper_bound_probs = estimared_rewards_map[k] + self.calculate_delta(total_rounds, total_count,
+                                                                                    sampling_count)
                 if max_upper_bound_probs < upper_bound_probs:
                     max_upper_bound_probs = upper_bound_probs
                     max_probs_key = k
