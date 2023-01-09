@@ -1,3 +1,6 @@
 /data/bid_shading_QB_2022102121_2022102121.txt filter=lfs diff=lfs merge=lfs -text
 /data/bid_shading_QB_2022102118_2022102120.txt filter=lfs diff=lfs merge=lfs -text
 /data/bid_shading_xmly_2022102009_2022102020.txt filter=lfs diff=lfs merge=lfs -text
+/data/bid_shading_xmly_2022101909_2022101920.txt filter=lfs diff=lfs merge=lfs -text
+/data/bid_shading_xmly_2022102209_2022102220.txt filter=lfs diff=lfs merge=lfs -text
+/data/bid_shading_xmly_2022102309_2022102320.txt filter=lfs diff=lfs merge=lfs -text
