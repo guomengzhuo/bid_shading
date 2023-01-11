@@ -10,7 +10,7 @@ import pandas as pd
 import os
 import json
 from datetime import datetime
-from configs.config import TEST_DATA_PATH, No_pltv, ratio_step, MAB_SAVE_STEP, EVALUATION_POINT_NUMS
+from configs.config import No_pltv, MAB_SAVE_STEP, EVALUATION_POINT_NUMS, EVALUATION_POINT_STEP
 from data_process.read_data import ReadData
 from search.calculate_price_adjustment_gain import calculate_price_adjustment_gain
 from tools.reward_ratio_result_plot import Reward_Ratio_Image
@@ -21,7 +21,7 @@ class ResultEvaluate(object):
     # 数据读取主类
     """
 
-    def __init__(self, logging):
+    def __init__(self, logging, TEST_DATA_PATH):
         """
         # 初始化
         """
@@ -29,9 +29,10 @@ class ResultEvaluate(object):
         self.data_list = []
         self.cal_price_adjustment_gain = calculate_price_adjustment_gain(self.logging)
         self.shading_result_list = []
+        self.TEST_DATA_PATH = TEST_DATA_PATH
 
     def read_data(self):
-        read_data = ReadData(logging=self.logging, data_path=TEST_DATA_PATH)
+        read_data = ReadData(logging=self.logging, data_path=self.TEST_DATA_PATH)
         self.data_list = read_data.test_data_process()
 
     def analyze_bandit_dict(self, bandit_dict):
@@ -241,12 +242,12 @@ class ResultEvaluate(object):
             revenue_upper_bound = np.sum(test_pd["target_price"])
 
             record_nums = len(dict)
-            point_step = record_nums // EVALUATION_POINT_NUMS
-            if point_step == 0:
-                continue
+            # point_step = record_nums // EVALUATION_POINT_NUMS
+            # if point_step == 0:
+            #     continue
 
             for index, result_dict in dict.items():
-                if 'true' in str(index) or float(index) % (MAB_SAVE_STEP * point_step) != 0:
+                if 'true' in str(index) or float(index) % (MAB_SAVE_STEP * EVALUATION_POINT_STEP) != 0:
                     continue
 
                 market_price = result_dict["market_price"]
@@ -309,7 +310,7 @@ class ResultEvaluate(object):
 
         return evaluation
 
-    def do_process(self, bandit_dict):
+    def do_process(self, bandit_dict, method_name):
 
         # 步骤一、获取测试数据
         self.read_data()
@@ -317,12 +318,12 @@ class ResultEvaluate(object):
         # 步骤二、评估结果
         evaluation_dict = self.result_evaluation_steps(bandit_dict)
 
-        result_dir = "./result"
+        result_dir = f"./result/{method_name}"
         if not os.path.exists(result_dir):
             os.makedirs(result_dir)
 
         mhour = datetime.now().strftime("%Y%m%d%H")
-        with open(result_dir + f"/evaluation_result_{mhour}.json", mode='w', encoding='utf-8') as f:
+        with open(result_dir + f"/evaluation_result_{mhour}_{self.TEST_DATA_PATH[7:-4]}_{method_name}.json", mode='w', encoding='utf-8') as f:
             json.dump(evaluation_dict, f)
 
         for key, dict in evaluation_dict.items():
@@ -332,7 +333,6 @@ class ResultEvaluate(object):
 
         for key, dict in evaluation_dict.items():
             Reward_Ratio_Image.reward_ratio_image(self.logging, dict, key)
-
 
 
 if __name__ == '__main__':

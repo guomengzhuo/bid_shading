@@ -362,6 +362,16 @@ class UCBBandit(object):
                 is_win = np.random.binomial(1, sample_rate)
                 index = price_list.index(max_probs_key)
 
+                #####
+                if win_price == 0 and max_probs_key < ecpm:
+                    is_win = 0
+                if win_price > 0:
+                    if max_probs_key >= win_price:
+                        is_win = 1
+                    else:
+                        is_win = 0
+                #####
+
                 chosen_count_map[max_probs_key] += 1
                 if is_win == 1:
                     type_a_update[max_probs_key] += 1

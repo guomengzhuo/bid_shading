@@ -6,9 +6,11 @@
 # @Software: PyCharm
 
 import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 import os
 import json
+import pandas as pd
 
 
 class Distributed_Image(object):
@@ -118,19 +120,141 @@ class Distributed_Image(object):
                     .format(media_app_id, position_id))
         # plt.show()
 
+    def loop_win_rate(self, pred_imp_count_map, pred_chosen_count_map, true_imp_count_map, true_chosen_count_map, name):
+        pred_win_rate = {}
+        for i in pred_chosen_count_map.keys():
+            if i in pred_imp_count_map.keys():
+                pred_win_rate[i] = pred_imp_count_map[i] / pred_chosen_count_map[i]
+            else:
+                pred_win_rate[i] = 0
+
+        true_win_rate = {}
+        true_win_rate_acc = {}
+        acc_imp = 0
+        acc_chosen = 0
+
+        for k in true_chosen_count_map.keys():
+            if k in true_imp_count_map.keys():
+                true_win_rate[k] = true_imp_count_map[k] / true_chosen_count_map[k]
+                acc_imp += true_imp_count_map[k]
+            else:
+                true_win_rate[k] = 0
+            acc_chosen += true_chosen_count_map[k]
+            true_win_rate_acc[k] = acc_imp / acc_chosen
+
+        color_list = ['g', 'r', 'y', 'b']
+
+        matplotlib.rcParams['pdf.fonttype'] = 42
+        matplotlib.rcParams['ps.fonttype'] = 42
+        plt.rcParams.update({'font.family': 'Times New Roman', 'font.size': 12})
+        fig, ax = plt.subplots(figsize=(6.4, 4.8), dpi=300)
+        marker_list = ['*', 'v', 'o', 'p', '^']
+
+        plt.title("{} distribution".format(name))
+        ax.plot(list(map(float, pred_win_rate.keys())),
+                pred_win_rate.values(), label="pred win rate",
+                linestyle='-',
+                marker=marker_list[0],
+                markersize='6')
+        ax.plot(list(map(float, true_win_rate.keys())),
+                true_win_rate.values(),
+                label="true win rate",
+                linestyle='-',
+                marker=marker_list[1],
+                markersize='6')
+        ax.plot(list(map(float, true_win_rate_acc.keys())),
+                true_win_rate_acc.values(),
+                label="true acc win rate",
+                linestyle='-',
+                marker=marker_list[2],
+                markersize='6')
+        plt.legend()
+
+        # [media_app_id, position_id] = name.split('_')
+        # figure_dir = "./figure/{}".format(media_app_id)
+        # if not os.path.exists(figure_dir):
+        #     os.makedirs(figure_dir)
+        #
+        # plt.savefig(figure_dir + "/pred_win_rate_media_{}_position_{}.png"
+        #             .format(media_app_id, position_id))
+        plt.show()
+
+    def win_rate_std_plot(self, win_rate, name):
+        color_list = ['g', 'r', 'y', 'b']
+        i = 0
+
+        matplotlib.rcParams['pdf.fonttype'] = 42
+        matplotlib.rcParams['ps.fonttype'] = 42
+        plt.rcParams.update({'font.family': 'Times New Roman', 'font.size': 12})
+        fig, ax = plt.subplots(figsize=(6.4, 4.8), dpi=300)
+        marker_list = ['*', 'v', 'o', 'p', '^']
+
+        # 设置刻度
+        ax.tick_params(axis='both')
+        # 显示网格
+        ax.grid(True, linestyle='-.')
+        ax.yaxis.grid(True, linestyle='-.')
+
+        plt.figure(dpi=300)
+        ax.plot(list(map(float, win_rate.keys())),  win_rate.values, label="win rate std", linestyle='-', marker=marker_list[i],
+                markersize='6')
+
+        ax.set_xlabel("arm name")
+
+        # fig.legend(loc=1, bbox_to_anchor=(1, 1), bbox_transform=ax.transAxes)
+        # 添加图例
+        legend = ax.legend(loc='center right')
+
+
+        # [media_app_id, position_id] = name.split('_')
+        # figure_dir = "./figure/{}".format(media_app_id)
+        # if not os.path.exists(figure_dir):
+        #     os.makedirs(figure_dir)
+        #
+        # plt.savefig(figure_dir + "/pred_win_rate_media_{}_position_{}.png"
+        #             .format(media_app_id, position_id))
+        plt.show()
 
 def main():
-    bandit_result_path_name = "../result/bandit_result_2022123016_bid_shading_xmly_2022102109_2022102120_exp_arm30.json"
+    Dis = Distributed_Image(1)
+    bandit_result_path_name = "exp_1/bandit_result_2023011019_bid_shading_xmly_2022102109_2022102120_exp_1.json"
     evaluation_result_path_name = "../result/evaluation_result_2022123016_exp_arm30.json"
     with open(f"../result/{bandit_result_path_name}", mode='r', encoding='utf-8') as f:
         bandit_result = json.load(f)
-        print(bandit_result)
 
-        # 绘制最后一次迭代的预测竞得率曲线
+        for key, dict in bandit_result.items():
+            # if key in ["30633_36893", "30633_36565"]:
+            if True:
+                record_nums = dict.keys()
+                record_nums_list = []
+                for num in record_nums:
+                    try:
+                        record_nums_list.append(int(num))
+                    except:
+                        continue
+
+                true_imp_count_map = dict["true_imp_count_map"]
+                true_chosen_count_map = dict["true_chosen_count_map"]
+                print("select max loop nums", max(record_nums_list))
+                last_loop_dict = dict[str(max(record_nums_list))]
+                # 绘制最后一次迭代的预测竞得率曲线
+                Dis.loop_win_rate(last_loop_dict["imp_count_map"], last_loop_dict["chosen_count_map"],
+                                  true_imp_count_map, true_chosen_count_map, key)
 
 
-        # 对迭代过程中的各arm的竞得率进行展示，均值方差
-
+                # # 对迭代过程中的各arm的竞得率进行展示，均值方差
+                # record_dict = {}
+                # for num in record_nums_list:
+                #     arm_win_rate_dict = {}
+                #     for arm_num in dict[str(num)]["chosen_count_map"].keys():
+                #         try:
+                #             arm_win_rate_dict[arm_num] = dict[str(num)]["imp_count_map"][arm_num] / dict[str(num)]["chosen_count_map"][arm_num]
+                #         except:
+                #             arm_win_rate_dict[arm_num] = 0
+                #     record_dict[num] = arm_win_rate_dict
+                # record_df = pd.DataFrame(record_dict).T
+                # record_arm_std = np.std(record_df)
+                # Dis.win_rate_std_plot(record_arm_std, key)
 
 
 if __name__ == '__main__':

@@ -226,9 +226,9 @@ class EpsilonGreedyBandit(object):
         """
         计算reward权重
         """
-        reward = 1 - (price - market_price_value) ** 2
+        # reward = 1
 
-        # reward = 1 / np.exp((price - market_price_value))
+        reward = 1 / np.exp(np.abs(price - market_price_value))
 
         return reward
 
@@ -380,6 +380,16 @@ class EpsilonGreedyBandit(object):
                                              max(chosen_count_map[max_probs_key] - imp_count_map[max_probs_key], 1))
                 is_win = np.random.binomial(1, sample_rate)
                 index = price_list.index(max_probs_key)
+
+                #####
+                if win_price == 0 and max_probs_key < ecpm:
+                    is_win = 0
+                if win_price > 0:
+                    if max_probs_key >= win_price:
+                        is_win = 1
+                    else:
+                        is_win = 0
+                #####
 
                 count = 0
                 if is_win == 1:

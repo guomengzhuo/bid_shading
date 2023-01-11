@@ -13,7 +13,6 @@ import multiprocessing
 import datetime
 from data_process.read_data import ReadData
 from data_process.result_evaluate import ResultEvaluate
-from configs.config import DATA_PATH, TEST_DATA_PATH
 from configs.config import parallel_num, Environment, Multi_Process, search_test
 # from bandit.UCB_v0 import Bandit
 from bandit.UCB import UCBBandit as Bandit
@@ -23,6 +22,7 @@ import logging
 import json
 import numpy as np
 import pandas as pd
+import argparse
 
 
 if Environment == "offline":
@@ -46,7 +46,7 @@ class BidShading(object):
     bid shading 主类
     """
 
-    def __init__(self, logging):
+    def __init__(self, logging, mdate, method_name):
         """
         初始化
         """
@@ -61,10 +61,26 @@ class BidShading(object):
         self.test_imp_dict = {}
 
         self.optimal_ratio_dict = {}
+        self.mdate = mdate
+        self.method_name = method_name
+
+    def get_data_path(self):
+        mdate = self.mdate
+
+        date = datetime.datetime(int(mdate[0:4]), int(mdate[4:6]), int(mdate[6:8]))
+        valid_date = mdate
+        train_date = date + datetime.timedelta(days=1)
+        test_date = date + datetime.timedelta(days=2)
+
+        self.VALID_DATA_PATH = "./data/bid_shading_xmly_{0}09_{0}20.txt".format(valid_date)
+        self.TRAIN_DATA_PATH = "./data/bid_shading_xmly_{0}09_{0}20.txt".format(train_date.strftime('%Y%m%d'))
+        self.TEST_DATA_PATH = "./data/bid_shading_xmly_{0}09_{0}20.txt".format(test_date.strftime('%Y%m%d'))
+
+        self.logging.info("load data from valid {} train {} test {}".format(self.VALID_DATA_PATH, self.TRAIN_DATA_PATH, self.TEST_DATA_PATH))
 
     def read_data(self):
         # 1、读取 bid shading输入数据
-        rd = ReadData(logging=self.logging, data_path=DATA_PATH)
+        rd = ReadData(logging=self.logging, data_path=self.VALID_DATA_PATH)
 
         # market_price_dict = media_app_id:position_id:pltv - value
         # impression_price_dict = media_app_id:position_id:pltv - value_list
@@ -97,14 +113,18 @@ class BidShading(object):
         return
 
     def run(self):
+        self.get_data_path()
         self.logging.info("run -> start")
 
         bandit = Bandit()
 
-        # 1、读取相关要处理的的数据
+        # 1、读取相关要处理的的数据（valid data）
         self.read_data()
 
-        re = ResultEvaluate(self.logging)
+        rd = ReadData(logging=self.logging, data_path=self.TRAIN_DATA_PATH)
+        self.data_pd = rd.read_test_data_process(self.norm_dict)
+
+        re = ResultEvaluate(self.logging, self.TEST_DATA_PATH)
         if not search_test:
             # 2、计算并保存数据
             if not Multi_Process:
@@ -138,18 +158,18 @@ class BidShading(object):
                     self.optimal_ratio_dict.update(res.get())
 
             # 保存结果
-            result_dir = "./result"
+            result_dir = f"./result/{self.method_name}"
             if not os.path.exists(result_dir):
                 os.makedirs(result_dir)
 
             mhour = datetime.datetime.now().strftime("%Y%m%d%H")
-            with open(result_dir + f"/bandit_result_{mhour}_{TEST_DATA_PATH[7:-4]}.json", mode='w',
+            with open(result_dir + f"/bandit_result_{mhour}_{self.TEST_DATA_PATH[7:-4]}_{self.method_name}.json", mode='w',
                       encoding='utf-8') as f:
                 json.dump(self.optimal_ratio_dict, f)
 
         else:
             try:
-                with open("result/bandit_result_2022121418_bid_shading_xmly_2022102109_2022102120.json", mode='r', encoding='utf-8') as f:
+                with open(f"result/{self.method_name}/bandit_result_2023011112_bid_shading_xmly_2022102109_2022102120_UCB_weight1.json", mode='r', encoding='utf-8') as f:
                     self.optimal_ratio_dict = json.load(f)
             except:
                 self.optimal_ratio_dict = {'30390_37638': {'market_price': 597.076154312, 'upper_bound': 1356,
@@ -159,18 +179,25 @@ class BidShading(object):
         self.logging.info(f"run -> end len(optimal_ratio_dict):{len(self.optimal_ratio_dict)}")
         # self.logging.info(f"output optimal_ratio_dict:{self.optimal_ratio_dict}")
 
-        re.do_process(self.optimal_ratio_dict)
+        re.do_process(self.optimal_ratio_dict, self.method_name)
 
         # 3、计算完 删除临时文件
         self.remove_local_backend()
 
 
-def main():
-    bs = BidShading(logging)
+def main(mdate, method_name):
+    bs = BidShading(logging, mdate, method_name)
     bs.run()
 
 
 if __name__ == '__main__':
     # python3 bid_shading_e_e.py > train.log 2>&1 &
-    main()
+    parser = argparse.ArgumentParser(description="bid shading experiment")
+    # add args
+    parser.add_argument("-mdate", default="20221019") # 接下来3天为1组
+    parser.add_argument("-method_name", default="UCB_weight1")
+    args = parser.parse_args()
+    print(args)
+
+    main(args.mdate, args.method_name)
     

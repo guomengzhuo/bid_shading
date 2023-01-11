@@ -9,10 +9,9 @@ Environment = "offline"
 Multi_Process = False
 No_pltv = True
 search_test = False
-# DATA_PATH = './data/bid_shading_QB_2022102118_2022102120.txt'
-# TEST_DATA_PATH = './data/bid_shading_QB_2022102121_2022102121.txt'
-DATA_PATH = './data/bid_shading_xmly_2022102009_2022102020.txt'
-TEST_DATA_PATH = './data/bid_shading_xmly_2022102109_2022102120.txt'
+# TRAIN_DATA_PATH = './data/bid_shading_xmly_2022102009_2022102020.txt'
+# VALID_DATA_PATH = './data/bid_shading_xmly_2022101909_2022101920.txt'
+# TEST_DATA_PATH = './data/bid_shading_xmly_2022102109_2022102120.txt'
 
 # 选择最优化的方式
 OPTIMAL_COST = True
@@ -25,6 +24,7 @@ INCREASE_RATIO = 1.5
 PLTV_LEVEL = [1, 2, 3, 4]
 
 # 离散化的分桶数量
+# todo(mfishzhang) 实验1 arm数量
 BIN_NUMS = 30
 
 # 并行数量
@@ -50,3 +50,6 @@ MAB_SAVE_STEP = 500
 
 # 测试集测试的结果数量 - 绘图时的点的个数
 EVALUATION_POINT_NUMS = 20
+
+# 测试集测试的结果数量 - 绘图时的点的个数
+EVALUATION_POINT_STEP = 10

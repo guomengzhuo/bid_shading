@@ -220,14 +220,15 @@ class UCBBandit(object):
 
         return reward
 
+    # todo(mfishznag) 实验2 weight形式
     def calculate_reward_weigt_quadratic(self, price, market_price_value):
         """
         计算reward权重
         """
         # reward = 1 - (price - market_price_value) ** 2
-
-        reward = 1 / np.exp((price - market_price_value))
-
+        # 线性
+        reward = 1 / np.exp(np.abs(price - market_price_value))
+        # reward = 1
         return reward
 
     def bandit_init(self, impression_price_list, no_impression_price_list, market_price_value):
@@ -341,6 +342,7 @@ class UCBBandit(object):
                     beta = max(chosen_count_map[k], 1)
                 I = alpha / (alpha + beta) + (alpha * beta) / ((alpha + beta) ** 2 * (alpha + beta + 1))
 
+                # todo(mfishzhang)  实验3
                 upper_bound_probs = estimared_rewards_map[k] / (type_a_update[k] + 1) * I \
                                     + self.calculate_delta(total_count, sampling_count)
                 if max_upper_bound_probs < upper_bound_probs:
@@ -366,15 +368,15 @@ class UCBBandit(object):
                 is_win = np.random.binomial(1, sample_rate)
                 index = price_list.index(max_probs_key)
 
-                ######
-                # if win_price == 0 and max_probs_key < ecpm:
-                #     is_win = 0
-                # if win_price > 0:
-                #     if max_probs_key >= win_price:
-                #         is_win = 1
-                #     else:
-                #         is_win = 0
-                ######
+                #####
+                if win_price == 0 and max_probs_key < ecpm:
+                    is_win = 0
+                if win_price > 0:
+                    if max_probs_key >= win_price:
+                        is_win = 1
+                    else:
+                        is_win = 0
+                #####
 
                 count = 0
                 if is_win == 1:

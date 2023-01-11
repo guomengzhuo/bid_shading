@@ -142,8 +142,8 @@ class Reward_Ratio_Image(object):
         if not os.path.exists(figure_dir):
             os.makedirs(figure_dir)
 
-        plt.savefig(figure_dir + "/arm_nums_analyse_media_{}_position_{}_{}.png"
-                    .format(media_app_id, position_id, metrics))
+        # plt.savefig(figure_dir + "/method_analyse_media_{}_position_{}_{}.png"
+        #             .format(media_app_id, position_id, metrics))
         plt.show()
 
 
@@ -182,11 +182,23 @@ def main():
 def mean_plot_main():
     result_path = '../result'
     files = os.listdir(result_path)
+    all_files, all_dirs = [], []
+
+    for root, dirs, files in os.walk('../result'):
+        for file in files:
+            all_files.append(os.path.join(root, file))
+
+        for dir in dirs:
+            all_dirs.append(os.path.join(root, dir))
+
+    # todo()
     multimethod_evaluation_name_dict = {
-        # "exp_arm10": "exp_arm10.json",
-        "exp_arm30": "exp_arm30.json",
-        "exp_arm50": "exp_arm50.json",
-        "exp_arm100": "exp_arm100.json"
+        # "test1": "EpsilonGreedy.json",
+        # "exp_1": "exp_1.json",
+        "UCB_exp_abs": "UCB_exp_abs.json",
+        "UCB_weight1": "UCB_weight1.json",
+        "BMAB_arm30": "BMAB_arm30.json"
+        # "UCB_weight1_one_day": "UCB_weight1_1.json"
     }
 
     multimethod_evaluation_result_dict = {}
@@ -194,7 +206,7 @@ def mean_plot_main():
     for key, name in multimethod_evaluation_name_dict.items():
         tmp_data_list = {}
         cnt = 0
-        for file in files:
+        for file in all_files:
             if "evaluation_result" in file and name in file:
                 with open(f"../result/{file}", mode='r', encoding='utf-8') as f:
                     singlemethod_evaluation_dict = json.load(f)
@@ -207,10 +219,11 @@ def mean_plot_main():
         for media_position, dict in tmp_data_list.items():
             if media_position not in multimethod_evaluation_result_dict.keys():
                 multimethod_evaluation_result_dict[media_position] = {}
-            multimethod_evaluation_result_dict[media_position][key] = (dict / cnt).to_dict()
+            multimethod_evaluation_result_dict[media_position][key] = (dict / cnt).dropna(axis=1).to_dict()
 
     for key, dict in multimethod_evaluation_result_dict.items():
         if key in ["30633_36893", "30633_36565"]:
+        # if True:
             # for metrics in ["surplus_mab"]:
             for metrics in ["win_rate_mab", "cpm_mab", "surplus_mab"]:
                 Reward_Ratio_Image.multiple_method_comparison(logging, dict, key, metrics)

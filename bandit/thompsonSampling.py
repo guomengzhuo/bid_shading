@@ -226,7 +226,8 @@ class ThompsonSamplingBandit(object):
         """
         计算reward权重
         """
-        reward = 1 - (price - market_price_value) ** 2
+
+        reward = 1 / np.exp(np.abs(price - market_price_value))
 
         return reward
 
@@ -339,6 +340,8 @@ class ThompsonSamplingBandit(object):
         loop_index = 0
 
         for _, row in data_pd.iterrows():
+            ecpm = row["response_ecpm"]
+            win_price = row["win_price"]
             # 步骤3：1、select arms
             max_probs_key, beta_rvs_best = self.select_arm(chosen_key_set, ecpm_alpha, ecpm_beta)
 
@@ -361,6 +364,16 @@ class ThompsonSamplingBandit(object):
                                              max(chosen_count_map[max_probs_key] - imp_count_map[max_probs_key], 1))
                 is_win = np.random.binomial(1, sample_rate)
                 index = price_list.index(max_probs_key)
+
+                #####
+                if win_price == 0 and max_probs_key < ecpm:
+                    is_win = 0
+                if win_price > 0:
+                    if max_probs_key >= win_price:
+                        is_win = 1
+                    else:
+                        is_win = 0
+                #####
 
                 count = 0
                 if is_win == 1:
@@ -424,10 +437,10 @@ class ThompsonSamplingBandit(object):
                         estimared_rewards_map[x] += 1 * weight
 
                         # ecpm_alpha is based on total counts of rewards of arm
-                        ecpm_alpha[x] += weight
-
+                        ecpm_alpha[x] += 1
+                    else:
                         # ecpm_beta is based on total counts of failed rewards on arm
-                        ecpm_beta[x] += 1 - weight
+                        ecpm_beta[x] += 1
 
             loop_index += 1
             if loop_index % MAB_SAVE_STEP == 0:
