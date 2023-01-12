@@ -56,7 +56,7 @@ class Distributed_Image(object):
                            market_price_value, min_imp_price, name, revenue_rate_list, sampling_chosen_count_map):
         pred_win_rate = {}
         for i in pred_chosen_count_map.keys():
-            if i in pred_imp_count_map.keys():
+            if i in pred_imp_count_map.keys() and i in pred_chosen_count_map.keys() and pred_chosen_count_map[i] > 0:
                 pred_win_rate[i] = pred_imp_count_map[i] / pred_chosen_count_map[i]
             else:
                 pred_win_rate[i] = 0
