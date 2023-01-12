@@ -17,5 +17,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
 
-    for mdate in ["20221017", "20221018", "20221019"]:
+    for mdate in ["20221017", "20221018", "20221019", "20221020", "20221021"]:
         main(mdate, args.method_name)
