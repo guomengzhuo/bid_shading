@@ -346,7 +346,8 @@ class UCBBandit(object):
                 if k in sampling_chosen_count_map:
                     sampling_count += sampling_chosen_count_map[k]
 
-                upper_bound_probs = estimared_rewards_map[k] + self.calculate_delta(total_count, sampling_count)
+                upper_bound_probs = estimared_rewards_map[k] / (type_a_update[k] + 1)\
+                                    + self.calculate_delta(total_count, sampling_count)
                 if max_upper_bound_probs < upper_bound_probs:
                     max_upper_bound_probs = upper_bound_probs
                     max_probs_key = k
