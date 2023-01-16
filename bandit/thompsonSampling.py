@@ -194,16 +194,6 @@ class ThompsonSamplingBandit(object):
 
         return optimal_ratio_dict
 
-    def calculate_delta(self, total_count, k_chosen_count):
-        # total_count->目前的试验次数，k_chosen_count->是这个臂被试次数
-        if total_count == 0:
-            return 0
-
-        if k_chosen_count < 1:
-            k_chosen_count = 1
-
-        return math.sqrt(2 * math.log(total_count) / float(k_chosen_count))
-
     def calculate_reward_weigth(self, price, market_price_value, right_range, left_range):
         """
         计算reward权重

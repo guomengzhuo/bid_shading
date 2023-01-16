@@ -99,7 +99,7 @@ class Reward_Ratio_Image(object):
         matplotlib.rcParams['ps.fonttype'] = 42
         plt.rcParams.update({'font.family': 'Times New Roman', 'font.size': 12})
         fig, ax = plt.subplots(figsize=(6.4, 4.8), dpi=300)
-        marker_list = ['*', 'v', 'o', 'p', '^']
+        marker_list = ['*', 'v', 'o', 'p', '^', 'h', 'd', 'X', '>']
 
         # 设置刻度
         ax.tick_params(axis='both')
@@ -193,12 +193,14 @@ def mean_plot_main():
 
     # todo()
     multimethod_evaluation_name_dict = {
-        # "test1": "EpsilonGreedy.json",
-        # "exp_1": "exp_1.json",
-        "UCB_exp_abs": "UCB_exp_abs.json",
-        "UCB_weight1": "UCB_weight1.json",
-        "BMAB_arm30": "BMAB_arm30.json"
-        # "UCB_weight1_one_day": "UCB_weight1_1.json"
+        "UCB": "UCB.json",
+        "MOSS": "MOSS.json",
+        "UCB_1": "UCB_1.json",
+        "UCB_noprior": "UCB_noprior.json",
+        "UCB_independent": "UCB_independent.json",
+        "UCB_2": "UCB_2.json",
+        "epsilonGreedy": "epsilonGreedy.json",
+        "thompsonSampling": "thompsonSampling.json"
     }
 
     multimethod_evaluation_result_dict = {}
@@ -216,6 +218,7 @@ def mean_plot_main():
                             tmp_data_list[media_position] = pd.DataFrame(dict)
                         else:
                             tmp_data_list[media_position] += pd.DataFrame(dict)
+
         for media_position, dict in tmp_data_list.items():
             if media_position not in multimethod_evaluation_result_dict.keys():
                 multimethod_evaluation_result_dict[media_position] = {}
