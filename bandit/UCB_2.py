@@ -13,6 +13,8 @@ https://zhuanlan.zhihu.com/p/573415044：
 使用UCB1算法<Finite-time Analysis of the Multiarmed Bandit Problem. Machine Learning>，
 将会不仅仅关注于回报，同样会关注每个臂被探索的次数。
 在UCB1算法中，采用奖励期望估计的置信上界来作为这个指标
+
+https://github.com/johnmyleswhite/BanditsBook/blob/72345f9fb3c2c5b83abe5adcae16c86ed1213d4f/python/algorithms/ucb/ucb2.py#L35
 """
 
 import json
@@ -209,12 +211,17 @@ class UCBBandit(object):
         if total_count == 0:
             return 0
 
-        if k_chosen_count < 1:
-            k_chosen_count = 1
+        if k_chosen_count > 50:
+            k_chosen_count = 50
 
+        # print(f"alpha_param:{self.alpha_param}, k_chosen_count:{k_chosen_count}")
         tau = int(math.ceil((1 + self.alpha_param) ** k_chosen_count))
 
-        return math.sqrt((1. + k_chosen_count) * math.log(math.e * float(total_count) / tau) / (2 * tau))
+        # print(f"tau:{tau}, total_count:{total_count}, k_chosen_count:{k_chosen_count}")
+        # print(f"math.log(math.e * float(total_count) / tau):{math.log(math.e * float(total_count) / tau)}")
+        if math.log(math.e * float(total_count) / tau) <= 0:
+            return 0
+        return math.sqrt((1. + k_chosen_count) * math.log(math.e * float(total_count) / tau) / (2. * tau))
 
     def calculate_reward_weigth(self, price, market_price_value, right_range, left_range):
         """
@@ -344,7 +351,7 @@ class UCBBandit(object):
             for k in chosen_key_set:
                 sampling_count = 0
                 if k in sampling_chosen_count_map:
-                    sampling_count += sampling_chosen_count_map[k]
+                    sampling_count = sampling_chosen_count_map[k]
 
                 upper_bound_probs = estimared_rewards_map[k] / (type_a_update[k] + 1)\
                                     + self.calculate_delta(total_count, sampling_count)

@@ -340,6 +340,7 @@ class UCBBandit(object):
                 else:
                     alpha = 1
                     beta = max(chosen_count_map[k], 1)
+
                 I = alpha / (alpha + beta) + (alpha * beta) / ((alpha + beta) ** 2 * (alpha + beta + 1))
 
                 # todo(mfishzhang)  实验3

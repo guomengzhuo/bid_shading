@@ -4,7 +4,6 @@
 # @Site    : 
 # @File    : UCB_noprior.py
 # @Software: PyCharm
-
 import json
 import logging
 import math
@@ -339,6 +338,8 @@ class UCBBandit(object):
                 if loop_index == 0:
                     alpha = 1
                     beta = 1
+                    imp_count_map[k] = 1
+                    chosen_count_map[k] = 1
                 else:
                     if k in imp_count_map:
                         alpha = max(imp_count_map[k], 1)

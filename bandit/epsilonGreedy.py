@@ -222,14 +222,15 @@ class EpsilonGreedyBandit(object):
 
         return reward
 
+    # todo(mfishznag) 实验2 weight形式
     def calculate_reward_weigt_quadratic(self, price, market_price_value):
         """
         计算reward权重
         """
-        # reward = 1
-
+        # reward = 1 - (price - market_price_value) ** 2
+        # 线性
         reward = 1 / np.exp(np.abs(price - market_price_value))
-
+        # reward = 1
         return reward
 
     def bandit_init(self, impression_price_list, no_impression_price_list, market_price_value):
@@ -286,6 +287,12 @@ class EpsilonGreedyBandit(object):
         true_chosen_count_map = copy.deepcopy(chosen_count_map)
         true_imp_count_map = copy.deepcopy(imp_count_map)
 
+        """
+        for key, _ in chosen_count_map.items():
+            chosen_count_map[key] = 2
+            imp_count_map[key] = 1
+        """
+
         # 步骤2：选top
         chosen_key_set = list(chosen_count_map.keys())
         if len(chosen_count_map) > max_search_num:
@@ -324,43 +331,23 @@ class EpsilonGreedyBandit(object):
             max_upper_bound_probs = 0.0
             max_probs_key = 0
             total_count = sum(sampling_chosen_count_map.values())
+
             # 步骤3：1、select arms
-
             rand_num = np.random.random()
-
             if rand_num > epsilon:
                 for k in chosen_key_set:
                     sampling_count = 0
                     if k in sampling_chosen_count_map:
                         sampling_count += sampling_chosen_count_map[k]
 
-                    # 计算I
-                    if k in imp_count_map:
-                        alpha = max(imp_count_map[k], 1)
-                        beta = max(chosen_count_map[k] - imp_count_map[k], 1)
-                    else:
-                        alpha = 1
-                        beta = max(chosen_count_map[k], 1)
-                    I = alpha / (alpha + beta) + (alpha * beta) / ((alpha + beta) ** 2 * (alpha + beta + 1))
-
-                    upper_bound_probs = estimared_rewards_map[k] / (type_a_update[k] + 1) * I \
-                                        + self.calculate_delta(total_count, sampling_count)
+                    upper_bound_probs = estimared_rewards_map[k] / (type_a_update[k] + 1)
                     if max_upper_bound_probs < upper_bound_probs:
                         max_upper_bound_probs = upper_bound_probs
                         max_probs_key = k
             else:
                 max_probs_key = choice(list(chosen_key_set))
-                # 计算I
-                if max_probs_key in imp_count_map:
-                    alpha = max(imp_count_map[max_probs_key], 1)
-                    beta = max(chosen_count_map[max_probs_key] - imp_count_map[max_probs_key], 1)
-                else:
-                    alpha = 1
-                    beta = max(chosen_count_map[max_probs_key], 1)
 
-                I = alpha / (alpha + beta) + (alpha * beta) / ((alpha + beta) ** 2 * (alpha + beta + 1))
-                max_upper_bound_probs = estimared_rewards_map[max_probs_key] / (type_a_update[max_probs_key] + 1) * I \
-                                        + self.calculate_delta(total_count, sampling_count)
+                max_upper_bound_probs = estimared_rewards_map[max_probs_key] / (type_a_update[max_probs_key] + 1)
 
             # 记录上一轮的reward ratio
             revenue_rate_list.append(max_upper_bound_probs)
