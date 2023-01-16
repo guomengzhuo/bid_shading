@@ -46,11 +46,8 @@ class CalculateDelta(object):
         if k_chosen_count > 50:
             k_chosen_count = 50
 
-        # print(f"alpha_param:{self.alpha_param}, k_chosen_count:{k_chosen_count}")
         tau = int(math.ceil((1 + self.alpha_param) ** k_chosen_count))
 
-        # print(f"tau:{tau}, total_count:{total_count}, k_chosen_count:{k_chosen_count}")
-        # print(f"math.log(math.e * float(total_count) / tau):{math.log(math.e * float(total_count) / tau)}")
         if math.log(math.e * float(total_count) / tau) <= 0:
             return 0
         return math.sqrt((1. + k_chosen_count) * math.log(math.e * float(total_count) / tau) / (2. * tau))

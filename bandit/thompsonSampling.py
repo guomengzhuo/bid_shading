@@ -12,11 +12,11 @@ import logging
 import math
 import multiprocessing
 import numpy as np
-from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, sample_ratio, Environment, No_pltv, MAB_SAVE_STEP
+from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, sample_ratio, Multi_Process, Environment, No_pltv, MAB_SAVE_STEP
 from tools.market_price_distributed import Distributed_Image
 import copy
 from collections import defaultdict
-import matplotlib.pyplot as plt
+import pandas as pd
 import os
 from scipy.stats import beta as Beta
 from datetime import datetime
@@ -520,6 +520,11 @@ class ThompsonSamplingBandit(object):
 
         logging.info(f"proc_id={multiprocessing.current_process().name}, "
                      f"media_app_id:{media_app_id}, position_set:{position_set}")
+
+        if Multi_Process:
+            data_pd = pd.DataFrame.from_dict(dict(data_pd), orient='columns')
+
+        logging.info(f"data_pd_head:{data_pd.head()}")
 
         for position_id in position_set:
             # self.market_price_dict = media_app_id:position_id:pltv - value

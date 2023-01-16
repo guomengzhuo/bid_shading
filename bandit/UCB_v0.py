@@ -11,7 +11,7 @@ import multiprocessing
 import numpy as np
 from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, sample_ratio, Environment, No_pltv
 from tools.market_price_distributed import Distributed_Image
-
+from bandit_public.calculateDelta import CalculateDelta
 from search.get_adjust_ratio import get_adjust_ratio
 import copy
 from collections import defaultdict
@@ -42,6 +42,7 @@ class UCBBandit(object):
         """
         初始化
         """
+        self.calculate_delta = CalculateDelta()
 
     def calculate_market_price(self, media_app_id, position_id, market_price_dict,
                                impression_price_dict, no_impression_price, norm_dict,
@@ -132,16 +133,6 @@ class UCBBandit(object):
                                  market_price, chosen_count_map, imp_count_map, ecpm_norm_dict, optimal_ratio_dict)
 
         return optimal_ratio_dict
-
-    def calculate_delta(self, total_count, k_chosen_count):
-        # total_count->目前的试验次数，k_chosen_count->是这个臂被试次数
-        if total_count == 0:
-            return 0
-
-        if k_chosen_count < 1:
-            k_chosen_count = 1
-
-        return math.sqrt(2 * math.log(total_count) / float(k_chosen_count))
 
     def calculate_reward_weigth(self, price, market_price_value, right_range, left_range):
         """
@@ -270,7 +261,7 @@ class UCBBandit(object):
                 I = alpha / (alpha + beta) + (alpha * beta) / ((alpha + beta) ** 2 * (alpha + beta + 1))
 
                 upper_bound_probs = estimared_rewards_map[k] / (type_a_update[k] + 1) * I \
-                                    + self.calculate_delta(total_count, sampling_count)
+                                    + self.calculate_delta.sqrt(total_count, sampling_count)
                 if max_upper_bound_probs < upper_bound_probs:
                     max_upper_bound_probs = upper_bound_probs
                     max_probs_key = k
