@@ -274,6 +274,9 @@ class UCBBandit(object):
         chosen_count_map, imp_count_map, estimared_rewards_map = self.bandit_init(impression_price_list,
                                                                                   no_impression_price_list,
                                                                                   market_price_value)
+        for k in list(chosen_count_map.keys()):
+            imp_count_map[k] = 1
+            chosen_count_map[k] = 2
 
         true_chosen_count_map = copy.deepcopy(chosen_count_map)
         true_imp_count_map = copy.deepcopy(imp_count_map)
@@ -326,19 +329,12 @@ class UCBBandit(object):
                      sampling_count += sampling_chosen_count_map[k]
 
                 # 计算I
-
-                if loop_index == 0:
-                    alpha = 1
-                    beta = 1
-                    imp_count_map[k] = 1
-                    chosen_count_map[k] = 1
+                if k in imp_count_map:
+                    alpha = max(imp_count_map[k], 1)
+                    beta = max(chosen_count_map[k] - imp_count_map[k], 1)
                 else:
-                    if k in imp_count_map:
-                        alpha = max(imp_count_map[k], 1)
-                        beta = max(chosen_count_map[k] - imp_count_map[k], 1)
-                    else:
-                        alpha = 1
-                        beta = max(chosen_count_map[k], 1)
+                    alpha = 1
+                    beta = max(chosen_count_map[k], 1)
 
                 I = alpha / (alpha + beta) + (alpha * beta) / ((alpha + beta) ** 2 * (alpha + beta + 1))
 
