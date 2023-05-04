@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # @Time    : 2023/1/16 10:21
-# @Author  : biglongyuan
+# @Author  :
 # @Site    : 
 # @File    : calculateDelta.py
 # @Software: PyCharm
