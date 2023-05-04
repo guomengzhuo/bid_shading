@@ -1,17 +1,9 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2022/9/27 17:19
-# @Author  : biglongyuan
-# @Site    : 
-# @File    : config.py
-# @Software: PyCharm
 
 Environment = "offline"
 Multi_Process = False
 No_pltv = True
 search_test = False
-# TRAIN_DATA_PATH = './data/bid_shading_xmly_2022102009_2022102020.txt'
-# VALID_DATA_PATH = './data/bid_shading_xmly_2022101909_2022101920.txt'
-# TEST_DATA_PATH = './data/bid_shading_xmly_2022102109_2022102120.txt'
 
 # 选择最优化的方式
 OPTIMAL_COST = True
@@ -24,7 +16,6 @@ INCREASE_RATIO = 1.5
 PLTV_LEVEL = [1, 2, 3, 4]
 
 # 离散化的分桶数量
-# todo(mfishzhang) 实验1 arm数量
 BIN_NUMS = 30
 
 # 并行数量

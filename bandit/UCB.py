@@ -10,7 +10,6 @@ import math
 import multiprocessing
 import numpy as np
 from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, Multi_Process, Environment, No_pltv, MAB_SAVE_STEP
-from tools.market_price_distributed import Distributed_Image
 import copy
 from collections import defaultdict
 from bandit_public.calculateDelta import CalculateDelta
@@ -134,10 +133,6 @@ class UCBBandit(object):
                              f"len impression_price_list:{len(impression_price_list)}, "
                              f"len no_impression_price_list:{len(no_impression_price_list)}")
 
-                # optimal_ratio_dict = self.save_bandit_result(media_app_id, position_id, -1,
-                #                                              market_price, chosen_count_map, imp_count_map,
-                #                                              norm_dict, true_imp_count_map)
-
         return optimal_ratio_dict
 
     def save_bandit_result(self, media_app_id, position_id, level, market_price_norm,
@@ -159,10 +154,6 @@ class UCBBandit(object):
         optimal_ratio_dict[key]['chosen_count_map'] = chosen_count_map
         optimal_ratio_dict[key]['imp_count_map'] = imp_count_map
         optimal_ratio_dict[key]['norm_dict'] = norm_dict
-        # optimal_ratio_dict[key]['true_imp_count_map'] = true_imp_count_map
-        # optimal_ratio_dict[key]['true_chosen_count_map'] = true_chosen_count_map
-        # optimal_ratio_dict[key]['reward_ratio_list'] = reward_ratio_list
-
         return optimal_ratio_dict
 
     def save_bandit_result_during_loop(self, media_app_id, position_id, level,
@@ -190,7 +181,6 @@ class UCBBandit(object):
         optimal_ratio_dict[key][loop_index]['norm_dict'] = norm_dict
         optimal_ratio_dict[key]['true_imp_count_map'] = true_imp_count_map
         optimal_ratio_dict[key]['true_chosen_count_map'] = true_chosen_count_map
-        # optimal_ratio_dict[key]['reward_ratio_list'] = reward_ratio_list
 
         return optimal_ratio_dict
 
@@ -212,7 +202,6 @@ class UCBBandit(object):
 
         return reward
 
-    # todo(mfishznag) 实验2 weight形式
     def calculate_reward_weigt_quadratic(self, price, market_price_value):
         """
         计算reward权重
@@ -266,10 +255,8 @@ class UCBBandit(object):
         """
         e-e探索：UCB方式
         """
-        # 二价数据集未竞得的win price=0，如果使用回传市场价格的数据，这里需要修改
         data_pd = data_pd[data_pd.win_price <= data_pd.response_ecpm]
 
-        Dis_Image = Distributed_Image(logging)
         # 步骤1：初始化
         chosen_count_map, imp_count_map, estimared_rewards_map = self.bandit_init(impression_price_list,
                                                                                   no_impression_price_list,
@@ -335,7 +322,6 @@ class UCBBandit(object):
 
                 I = alpha / (alpha + beta) + (alpha * beta) / ((alpha + beta) ** 2 * (alpha + beta + 1))
 
-                # todo(mfishzhang)  实验3
                 upper_bound_probs = estimared_rewards_map[k] / (type_a_update[k] + 1) * I \
                                     + self.calculate_delta.sqrt(total_count, sampling_count)
                 if max_upper_bound_probs < upper_bound_probs:
@@ -455,20 +441,10 @@ class UCBBandit(object):
                 market_price = price
             estimared_rewards_map[price] = value / max_sampling_freq
 
-        # Dis_Image.win_rate_image(market_price_value, imp_count_map, chosen_count_map, impression_price_list[0])
-
         for x in chosen_count_map.keys():
             if x in true_imp_count_map:
                 imp_count_map[x] = imp_count_map[x] - true_imp_count_map[x]
             chosen_count_map[x] = chosen_count_map[x] - true_chosen_count_map[x]
-
-        # s = np.array(search_count_set)
-        # print(max(s), min(s), np.mean(s), np.std(s))
-
-        Dis_Image.true_pred_win_rate(imp_count_map, chosen_count_map, true_imp_count_map, true_chosen_count_map,
-                                     market_price_value, impression_price_list[0],
-                                     '_'.join([str(media_app_id), str(position_id)]),
-                                     revenue_rate_list, sampling_chosen_count_map)
 
         return market_price, chosen_count_map, imp_count_map, \
                true_imp_count_map, true_chosen_count_map, revenue_rate_list, optimal_ratio_dict

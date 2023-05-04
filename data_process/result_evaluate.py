@@ -207,10 +207,6 @@ class ResultEvaluate(object):
             test_pd = test_pd[test_pd.target_price > 0]
             test_pd = test_pd[test_pd.target_price <= test_pd.response_ecpm]
 
-            # 数据过滤筛选
-            test_pd["gap_ratio"] = (test_pd["response_ecpm"] - test_pd["target_price"]) / test_pd["response_ecpm"]
-            test_pd = test_pd[test_pd["gap_ratio"] > 0.2]
-
             if test_pd.empty:
                 self.logging.info(f"key:{key}, test_pd is empty!")
                 continue
@@ -284,10 +280,6 @@ class ResultEvaluate(object):
                     test_pd,
                     "label_mab")
 
-                # self.logging.info(f"key {key}, index {index}\n"
-                #                   f"rr_br: {rr_br}, win rate br: {win_rate_br}, cpm br: {cpm_br} \n"
-                #                   f"rr_mab: {rr_mab}, win rate mab: {win_rate_mab}, cpm mab: {cpm_mab}")
-
                 evaluation[key][index] = {
                     "rr_mab": rr_mab,
                     "rr_br": rr_br,
@@ -326,13 +318,13 @@ class ResultEvaluate(object):
         with open(result_dir + f"/evaluation_result_{mhour}_{self.TEST_DATA_PATH[7:-4]}_{method_name}.json", mode='w', encoding='utf-8') as f:
             json.dump(evaluation_dict, f)
 
-        for key, dict in evaluation_dict.items():
-            if key in ["30633_36893", "30633_36565"]:
-                for metrics in ["rr", "win_rate", "cpm", "price_elasticity", "revenue", "surplus"]:
-                    Reward_Ratio_Image.one_metrics_image(self.logging, dict, key, metrics)
-
-        for key, dict in evaluation_dict.items():
-            Reward_Ratio_Image.reward_ratio_image(self.logging, dict, key)
+        # for key, dict in evaluation_dict.items():
+        #     if key in ["30633_36893", "30633_36565"]:
+        #         for metrics in ["rr", "win_rate", "cpm", "price_elasticity", "revenue", "surplus"]:
+        #             Reward_Ratio_Image.one_metrics_image(self.logging, dict, key, metrics)
+        #
+        # for key, dict in evaluation_dict.items():
+        #     Reward_Ratio_Image.reward_ratio_image(self.logging, dict, key)
 
 
 if __name__ == '__main__':

@@ -1,15 +1,10 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2022/12/22 10:33
-# @Author  : biglongyuan
-# @Site    :
-# @File    : request.py
-# @Software: PyCharm
-
 
 # curl -X POST -d '{"inputs": {"mdate":[11],"media_app_id":[2001],"position_id":[30020],"ecpm":[11],
 # "market_price":[100]}}' http://localhost:8501/v1/models/dlf:predict
 
 import requests
+import json
 
 
 def predict(mdate, media_app_id, position_id, ecpm_min, ecpm_max, gap, market_price=0):
@@ -29,19 +24,24 @@ def predict(mdate, media_app_id, position_id, ecpm_min, ecpm_max, gap, market_pr
         #     }"""
         r = requests.post(url, data=data)
         win_rate = r.json().get('outputs').get('final_dead_rate')[0]
-        pre_result[str(ecpm_min)] = str(win_rate)
+        pre_result[ecpm_min] = win_rate
         ecpm_min += gap
 
-    return {f"{media_app_id}_{position_id}": pre_result}
+    return pre_result
 
 
 if __name__ == '__main__':
     mdate = 11
-    media_app_id = 2001
-    position_id = 30020
+    media_app_id = 30633
     ecpm_min = 0
-    ecpm_max = 200
+    ecpm_max = 7000
     gap = 10
     market_price = 100
-    final_dead_rate = predict(mdate, media_app_id, position_id, ecpm_min, ecpm_max, gap, market_price)
-    print(f"final_dead_rate:{final_dead_rate}")
+
+    final_result = {}
+
+    for position_id in [36893, 36565]:
+        final_result[f"{media_app_id}_{position_id}"] = predict(mdate, media_app_id, position_id, ecpm_min, ecpm_max, gap, market_price)
+
+    with open(f"./evaluation_result_dnn.json", mode='w', encoding='utf-8') as f:
+        json.dump(final_result, f)

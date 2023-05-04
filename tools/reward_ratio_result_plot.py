@@ -1,10 +1,4 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2022/11/8 10:04
-# @Author  : biglongyuan
-# @Site    : 
-# @File    : market_price_distributed.py
-# @Software: PyCharm
-
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
@@ -113,18 +107,6 @@ class Reward_Ratio_Image(object):
             if result_pd.empty:
                 return
 
-            # if i == 0:
-            #     if metrics == "cpm_mab":
-            #         ax.plot(result_pd["index"], result_pd["cpm_before"], label="cpm_before", linestyle='-', marker='.',
-            #                 markersize='6', color='black')
-            #         ax.plot(result_pd["index"], result_pd["cpm_win_price"], label="cpm_win_price", linestyle='-', marker='.',
-            #                 markersize='6', color='gray')
-            #     elif metrics == "surplus_mab":
-            #         ax.plot(result_pd["index"], result_pd["surplus_upper_bound"], label="upper_bound", linestyle='-', marker='.',
-            #                 markersize='6', color='black')
-            #         ax.plot(result_pd["index"], result_pd["surplus_br"], label="surplus_br", linestyle='-', marker='.',
-            #                 markersize='6', color='gray')
-
             ax.plot(result_pd["index"], result_pd[metrics], label=method, linestyle='-', marker=marker_list[i],
                     markersize='6')
             # ax.scatter(result_pd["index"], result_pd[metrics], c=color_list[i], s=5, label=method)
@@ -138,9 +120,9 @@ class Reward_Ratio_Image(object):
         legend = ax.legend(loc='center right')
 
         [media_app_id, position_id] = name.split('_')
-        figure_dir = "./figure/{}".format(media_app_id)
-        if not os.path.exists(figure_dir):
-            os.makedirs(figure_dir)
+        # figure_dir = "./figure/{}".format(media_app_id)
+        # if not os.path.exists(figure_dir):
+        #     os.makedirs(figure_dir)
 
         # plt.savefig(figure_dir + "/method_analyse_media_{}_position_{}_{}.png"
         #             .format(media_app_id, position_id, metrics))
@@ -170,38 +152,22 @@ def main():
             for metrics in ["win_rate_mab", "cpm_mab", "surplus_mab"]:
                 Reward_Ratio_Image.multiple_method_comparison(logging, dict, key, metrics)
 
-        # for key, dict in evaluation_dict.items():
-        #     if key in ["30633_36893", "30633_36565"]:
-        #         for metrics in ["rr", "win_rate", "cpm", "price_elasticity", "revenue", "surplus"]:
-        #             Reward_Ratio_Image.one_metrics_image(logging, dict, key, metrics)
-        #
-        # for key, dict in evaluation_dict.items():
-        #     Reward_Ratio_Image.reward_ratio_image(logging, dict, key)
 
-
-def mean_plot_main():
-    result_path = '../result'
+def mean_plot_main(method_list):
+    result_path = './result'
     files = os.listdir(result_path)
     all_files, all_dirs = [], []
 
-    for root, dirs, files in os.walk('../result'):
+    for root, dirs, files in os.walk('./result'):
         for file in files:
             all_files.append(os.path.join(root, file))
 
         for dir in dirs:
             all_dirs.append(os.path.join(root, dir))
 
-    # todo()
-    multimethod_evaluation_name_dict = {
-        "UCB": "UCB.json",
-        "MOSS": "MOSS.json",
-        "UCB_1": "UCB_1.json",
-        "UCB_noprior": "UCB_noprior.json",
-        "UCB_independent": "UCB_independent.json",
-        "UCB_2": "UCB_2.json",
-        "epsilonGreedy": "epsilonGreedy.json",
-        "thompsonSampling": "thompsonSampling.json"
-    }
+    multimethod_evaluation_name_dict = {}
+    for method in method_list:
+        multimethod_evaluation_name_dict[method] = method + ".json"
 
     multimethod_evaluation_result_dict = {}
 
@@ -210,7 +176,7 @@ def mean_plot_main():
         cnt = 0
         for file in all_files:
             if "evaluation_result" in file and name in file:
-                with open(f"../result/{file}", mode='r', encoding='utf-8') as f:
+                with open(file, mode='r', encoding='utf-8') as f:
                     singlemethod_evaluation_dict = json.load(f)
                     cnt += 1
                     for media_position, dict in singlemethod_evaluation_dict.items():

@@ -56,6 +56,32 @@ def search_price_for_optimal_cost(logging, ecpm, market_price, chosen_count_map,
     return opt_price, opt_gain, before_gain
 
 
+def search_price_for_optimal_cost_win_rate(logging, ecpm, market_price, win_rate_map):
+    """
+    通过最大化∑win_rate * (ecpm-price), 找到最优出价点
+    """
+    opt_price = 1.0
+    opt_gain = 0
+    before_gain = 0
+    win_rate_dict = {}
+    for price, win_rate in win_rate_map.items():
+        # 最大化 impression_rate * (ecpm - price)
+        price = float(price)
+        win_rate = float(win_rate)
+
+        win_rate_dict[price] = win_rate
+        expect_gain = win_rate * (ecpm - price)
+        if expect_gain > opt_gain:
+            opt_gain = expect_gain
+            opt_price = price
+
+    opt_price = round(opt_price, 4)
+
+    # logging.info(f"market_price:{market_price}, opt_price:{opt_price}, ecpm:{ecpm}, opt_gain:{opt_gain},"
+    #              f" ,before_gain:{before_gain}, win_rate_dict:{win_rate_dict}")
+    return opt_price, opt_gain, before_gain
+
+
 def search_price_for_optimal_income(logging, ecpm, market_price, gmv, chosen_count_map,
                                     imp_count_map, norm_dict):
     """

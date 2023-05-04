@@ -13,7 +13,6 @@ import math
 import multiprocessing
 import numpy as np
 from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, sample_ratio, Multi_Process, Environment, No_pltv, MAB_SAVE_STEP
-from tools.market_price_distributed import Distributed_Image
 import copy
 from collections import defaultdict
 import pandas as pd
@@ -290,7 +289,6 @@ class ThompsonSamplingBandit(object):
         """
         data_pd = data_pd[data_pd.win_price <= data_pd.response_ecpm]
 
-        Dis_Image = Distributed_Image(logging)
         # 步骤1：初始化
         chosen_count_map, imp_count_map, estimared_rewards_map,\
             ecpm_alpha, ecpm_beta = self.bandit_init(impression_price_list, no_impression_price_list,
@@ -455,52 +453,10 @@ class ThompsonSamplingBandit(object):
                 market_price = price
             estimared_rewards_map[price] = value / max_sampling_freq
 
-        # Dis_Image.win_rate_image(market_price_value, imp_count_map, chosen_count_map, impression_price_list[0])
-
         for x in chosen_count_map.keys():
             if x in true_imp_count_map:
                 imp_count_map[x] = imp_count_map[x] - true_imp_count_map[x]
             chosen_count_map[x] = chosen_count_map[x] - true_chosen_count_map[x]
-
-        # s = np.array(search_count_set)
-        # print(max(s), min(s), np.mean(s), np.std(s))
-
-        Dis_Image.true_pred_win_rate(imp_count_map, chosen_count_map, true_imp_count_map, true_chosen_count_map,
-                                     market_price_value, impression_price_list[0],
-                                     '_'.join([str(media_app_id), str(position_id)]),
-                                     revenue_rate_list, sampling_chosen_count_map)
-
-        # 保存结果
-        # result_list = {
-        #     "imp_count_map": imp_count_map,
-        #     "chosen_count_map": chosen_count_map,
-        #     "true_imp_count_map": true_imp_count_map,
-        #     "true_chosen_count_map": true_chosen_count_map,
-        #     "revenue_rate_list": revenue_rate_list,
-        #     "sampling_chosen_count_map": sampling_chosen_count_map,
-        #     "market_price_value": market_price_value,
-        #     "min_imp_price_value": impression_price_list[0]
-        # }
-        # result_dir = "./result/{}/{}".format(media_app_id, position_id)
-        # if not os.path.exists(result_dir):
-        #     os.makedirs(result_dir)
-        #
-        # mhour = datetime.now().strftime("%Y%m%d%H")
-        # with open(result_dir + f"/bandit_result_{mhour}.json", mode='w', encoding='utf-8') as f:
-        #     json.dump(result_list, f)
-
-        """ 读取结果
-        with open(result_dir + "/bandit_result.json", mode='r', encoding='utf-8') as f:
-            result_dict = json.load(f)
-            imp_count_map = result_dict["imp_count_map"]
-            chosen_count_map = result_dict["chosen_count_map"]
-            true_imp_count_map = result_dict["true_imp_count_map"]
-            true_chosen_count_map = result_dict["true_chosen_count_map"]
-            revenue_rate_list = result_dict["revenue_rate_list"]
-            sampling_chosen_count_map = result_dict["sampling_chosen_count_map"]
-            market_price_value = result_dict["market_price_value"]
-            min_imp_price_value = result_dict["min_imp_price_value"]
-        """
 
         return market_price, chosen_count_map, imp_count_map, \
                true_imp_count_map, true_chosen_count_map, revenue_rate_list, optimal_ratio_dict

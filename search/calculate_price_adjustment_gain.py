@@ -6,7 +6,7 @@
 # @Software: PyCharm
 
 from configs.config import ratio_step, OPTIMAL_COST
-from search.search_optimal_price import search_price_for_optimal_cost, search_price_for_optimal_income
+from search.search_optimal_price import search_price_for_optimal_cost, search_price_for_optimal_income, search_price_for_optimal_cost_win_rate
 import numpy as np
 
 
@@ -94,6 +94,43 @@ class calculate_price_adjustment_gain(object):
                 gmv_list.append(gmv)
                 price, opt_gain, before_gain = search_price_for_optimal_income(self.logging, ecpm, market_price, gmv,
                                                               chosen_count_map, imp_count_map, norm_dict)
+
+            # self.logging.info(f"ecpm:{ecpm}, price:{price}, opt_gain:{opt_gain}, before_gain:{before_gain},"
+            #                   f"win_price:{win_price}, click_num:{click_num}, "
+            #                   f"target_cpa:{target_cpa}, pay_amount:{pay_amount}")
+            price_list.append(price)
+            opt_gain_list.append(opt_gain)
+            before_gain_list.append(before_gain)
+
+        self.logging.info(f"sum(opt_gain):{sum(opt_gain_list)}, sum(before_gain_list):{sum(before_gain_list)},"
+                          f"sum(gmv_list):{sum(gmv_list)}")
+
+        return price_list, opt_gain_list, before_gain_list
+
+    def get_adjust_price_win_rate(self, ecpm_pd, market_price, win_rate_map):
+        """
+        给定ecpm，计算最优出价
+        """
+
+        price_list = []
+        opt_gain_list = []
+        before_gain_list = []
+        gmv_list = []
+        # self.logging.info(f"ecpm_pd:\n{ecpm_pd.head()}")
+        for index, ecpm_meta in ecpm_pd.iterrows():
+            ecpm = ecpm_meta["response_ecpm"]
+            win_price = ecpm_meta["win_price"]
+            click_num = ecpm_meta["click_num"]
+            target_cpa = ecpm_meta["target_cpa"]
+            pay_amount = ecpm_meta["pay_amount"]
+            # ecpm = ecpm * (norm_max - norm_min) + norm_min
+            if OPTIMAL_COST:
+                price, opt_gain, before_gain = search_price_for_optimal_cost_win_rate(self.logging, ecpm, market_price, win_rate_map)
+            # else:
+            #     gmv = (target_cpa + pay_amount * 10 + click_num) * 1000  # 口径统一为千次曝光分
+            #     gmv_list.append(gmv)
+            #     price, opt_gain, before_gain = search_price_for_optimal_income(self.logging, ecpm, market_price, gmv,
+            #                                                   chosen_count_map, imp_count_map, norm_dict)
 
             # self.logging.info(f"ecpm:{ecpm}, price:{price}, opt_gain:{opt_gain}, before_gain:{before_gain},"
             #                   f"win_price:{win_price}, click_num:{click_num}, "

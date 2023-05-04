@@ -263,7 +263,6 @@ class ReadData(object):
         # 获取本地数据
         data_pd_test = self.read_csv_data()
 
-        # todo(@mfishzhang) 测试集是否需要过滤95分位数
         data_pd_test = self.data_filter(data_pd_test)
 
         if No_pltv:

@@ -13,7 +13,6 @@ import pandas as pd
 import multiprocessing
 import numpy as np
 from configs.config import PLTV_LEVEL, max_search_num, max_sampling_freq, Multi_Process, Environment, No_pltv, MAB_SAVE_STEP
-from tools.market_price_distributed import Distributed_Image
 import copy
 from collections import defaultdict
 from bandit_public.calculateDelta import CalculateDelta
@@ -271,7 +270,6 @@ class UCBBandit(object):
         # 二价数据集未竞得的win price=0，如果使用回传市场价格的数据，这里需要修改
         data_pd = data_pd[data_pd.win_price <= data_pd.response_ecpm]
 
-        Dis_Image = Distributed_Image(logging)
         # 步骤1：初始化
         chosen_count_map, imp_count_map, estimared_rewards_map = self.bandit_init(impression_price_list,
                                                                                   no_impression_price_list,
@@ -334,7 +332,6 @@ class UCBBandit(object):
                     beta = max(chosen_count_map[k], 1)
                 I = alpha / (alpha + beta) + (alpha * beta) / ((alpha + beta) ** 2 * (alpha + beta + 1))
 
-                # todo(mfishzhang)  实验3
                 upper_bound_probs = estimared_rewards_map[k] / (type_a_update[k] + 1) * I \
                                     + self.calculate_delta.sqrt(total_count, sampling_count)
                 if max_upper_bound_probs < upper_bound_probs:
@@ -404,20 +401,10 @@ class UCBBandit(object):
                 market_price = price
             estimared_rewards_map[price] = value / max_sampling_freq
 
-        # Dis_Image.win_rate_image(market_price_value, imp_count_map, chosen_count_map, impression_price_list[0])
-
         for x in chosen_count_map.keys():
             if x in true_imp_count_map:
                 imp_count_map[x] = imp_count_map[x] - true_imp_count_map[x]
             chosen_count_map[x] = chosen_count_map[x] - true_chosen_count_map[x]
-
-        # s = np.array(search_count_set)
-        # print(max(s), min(s), np.mean(s), np.std(s))
-
-        Dis_Image.true_pred_win_rate(imp_count_map, chosen_count_map, true_imp_count_map, true_chosen_count_map,
-                                     market_price_value, impression_price_list[0],
-                                     '_'.join([str(media_app_id), str(position_id)]),
-                                     revenue_rate_list, sampling_chosen_count_map)
 
         return market_price, chosen_count_map, imp_count_map, \
                true_imp_count_map, true_chosen_count_map, revenue_rate_list, optimal_ratio_dict
